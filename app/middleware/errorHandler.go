@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/kuzznya/letsdeploy/app/appErrors"
+	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -10,10 +10,6 @@ import (
 
 type stackError interface {
 	StackTrace() errors.StackTrace
-}
-
-type withCause interface {
-	Cause() error
 }
 
 func ErrorHandler(c *gin.Context) {
@@ -25,7 +21,7 @@ func ErrorHandler(c *gin.Context) {
 
 	for _, err := range c.Errors {
 		if serverError, found := serverErrorFromCause(err.Err); found {
-			log.Warnf("Handler returned error, appErrors.ServerError found in error chain: %d %s",
+			log.Warnf("Handler returned error, apperrors.ServerError found in error chain: %d %s",
 				serverError.Code, serverError.Error())
 			log.Infof("Error: %+v", err.Err)
 			//if stackErr, ok := err.Err.(stackError); ok {
@@ -38,7 +34,7 @@ func ErrorHandler(c *gin.Context) {
 
 	if len(c.Errors) == 1 {
 		log.WithError(c.Errors.Last().Err).Errorf(
-			"Handler returned error, appErrors.ServerError not found in error chain, responding with 500")
+			"Handler returned error, apperrors.ServerError not found in error chain, responding with 500")
 		if stackErr, ok := c.Errors.Last().Err.(stackError); ok {
 			log.Infof("Error stacktrace: %+v", stackErr.StackTrace())
 		}
@@ -46,13 +42,13 @@ func ErrorHandler(c *gin.Context) {
 		return
 	}
 	log.WithField("errors", c.Errors.JSON()).Errorln(
-		"Handler returned multiple errors, appErrors.ServerError not found in error chain, responding with 500")
+		"Handler returned multiple errors, apperrors.ServerError not found in error chain, responding with 500")
 	c.JSON(http.StatusInternalServerError, c.Errors.JSON())
 }
 
-func serverErrorFromCause(err error) (serverError *appErrors.ServerError, found bool) {
+func serverErrorFromCause(err error) (serverError *apperrors.ServerError, found bool) {
 	for err != nil {
-		if e, ok := err.(*appErrors.ServerError); ok {
+		if e, ok := err.(*apperrors.ServerError); ok {
 			return e, true
 		}
 		err = errors.Unwrap(err)

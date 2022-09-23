@@ -10,7 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/kuzznya/letsdeploy/app/util/validations"
 	"github.com/markbates/pkger"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -40,26 +40,34 @@ func Setup(cfg *viper.Viper) *sqlx.DB {
 
 	dbUrl := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable",
 		config.Username, config.Password, config.Host, config.Database)
-	logrus.Infof("Connecting to postgresql://%s:<password>@%s/%s\n",
+	log.Infof("Connecting to postgresql://%s:<password>@%s/%s\n",
 		config.Username, config.Host, config.Database)
 	db := sqlx.MustOpen("pgx", dbUrl)
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
 
+	log.Infoln("Successfully connected to PostgreSQL")
+
 	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
 	if err != nil {
-		logrus.Panicln(fmt.Errorf("cannot create migration driver from existing sqlx DB: %w", err))
+		log.WithError(err).Panicln("cannot create migration driver from existing sqlx DB")
 	}
 
 	migrationsModule := "/app/infrastructure/database/migrations"
 	pkger.Include(migrationsModule)
 	m, err := migrate.NewWithDatabaseInstance("pkger://"+migrationsModule, "postgres", driver)
 	if err != nil {
-		logrus.Panicln(fmt.Errorf("error creating migrate instance: %w", err))
+		log.Panicln(fmt.Errorf("error creating migrate instance: %w", err))
 	}
 	err = m.Up()
-	if err != nil && err != migrate.ErrNoChange {
-		logrus.Panicln(fmt.Errorf("error running migrations: %w", err))
+	if err != nil {
+		if err == migrate.ErrNoChange {
+			log.Infoln("Database is up to date, no migrations executed")
+		} else {
+			log.WithError(err).Panicln("error running migrations")
+		}
+	} else {
+		log.Infoln("Migrations executed")
 	}
 	return db
 }

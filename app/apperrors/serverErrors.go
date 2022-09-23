@@ -1,4 +1,4 @@
-package appErrors
+package apperrors
 
 import (
 	"fmt"
@@ -26,13 +26,13 @@ func (s *ServerError) Format(state fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if state.Flag('+') && s.Cause() != nil {
-			fmt.Fprintf(state, "%+v\n", s.Cause())
-			io.WriteString(state, s.Error())
+			_, _ = fmt.Fprintf(state, "%+v\n", s.Cause())
+			_, _ = io.WriteString(state, s.Error())
 			return
 		}
 		fallthrough
 	case 's', 'q':
-		io.WriteString(state, s.Error())
+		_, _ = io.WriteString(state, s.Error())
 	}
 }
 

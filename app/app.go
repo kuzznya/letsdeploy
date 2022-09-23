@@ -1,9 +1,9 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/kuzznya/letsdeploy/app/core"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/database"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/k8s"
 	"github.com/kuzznya/letsdeploy/app/middleware"
@@ -11,7 +11,6 @@ import (
 	"github.com/kuzznya/letsdeploy/app/storage"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"strings"
 )
@@ -40,13 +39,14 @@ func Start() {
 	store := storage.New(db)
 
 	clienset := k8s.Setup(cfg)
-	pods, err := clienset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+
+	version, err := clienset.ServerVersion()
 	if err != nil {
-		return
+		log.WithError(err).Panicln("Kubernetes server version retrieval failed")
 	}
-	for _, pod := range pods.Items {
-		log.Infof("Pod %s\n", pod.Name)
-	}
+	log.Infof("Kubernetes server version: %s\n", version.String())
+
+	c := core.New(store, clienset)
 
 	r := gin.Default()
 
@@ -56,7 +56,7 @@ func Start() {
 
 	v1 := r.Group("/api/v1")
 	v1.Use(middleware.Auth)
-	routers.RegisterAllRoutes(v1, store)
+	routers.RegisterAllRoutes(v1, c)
 
 	err = r.Run()
 	if err != nil {

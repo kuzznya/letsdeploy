@@ -2,31 +2,30 @@ package routers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/kuzznya/letsdeploy/app/appErrors"
-	"github.com/kuzznya/letsdeploy/app/handlers"
+	"github.com/kuzznya/letsdeploy/app/apperrors"
+	"github.com/kuzznya/letsdeploy/app/core"
 	"github.com/kuzznya/letsdeploy/app/models"
-	"github.com/kuzznya/letsdeploy/app/storage"
 	"net/http"
 	"strconv"
 )
 
-func RegisterProjectRoutes(r gin.IRouter, s *storage.Storage) {
+func RegisterProjectRoutes(r gin.IRouter, c *core.Core) {
 	projects := r.Group("/projects")
-	projects.GET("", GetUserProjectsRoute(s))
-	projects.POST("", CreateProjectRoute(s))
-	projects.GET("/:id", GetProjectRoute(s))
-	projects.PUT("/:id", UpdateProjectRoute(s))
-	projects.DELETE("/:id", DeleteProjectRoute(s))
+	projects.GET("", GetUserProjectsRoute(c))
+	projects.POST("", CreateProjectRoute(c))
+	projects.GET("/:id", GetProjectRoute(c))
+	projects.PUT("/:id", UpdateProjectRoute(c))
+	projects.DELETE("/:id", DeleteProjectRoute(c))
 
-	projects.GET("/:id/participants", GetParticipantsRoute(s))
-	projects.PUT("/:id/participants/:username", AddParticipantRoute(s))
-	projects.DELETE("/:id/participants/:username", RemoveParticipantRoute(s))
+	projects.GET("/:id/participants", GetParticipantsRoute(c))
+	projects.PUT("/:id/participants/:username", AddParticipantRoute(c))
+	projects.DELETE("/:id/participants/:username", RemoveParticipantRoute(c))
 }
 
-func GetUserProjectsRoute(s *storage.Storage) func(ctx *gin.Context) {
+func GetUserProjectsRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		username := ctx.GetString("username")
-		projects, err := handlers.GetUserProjects(s, username)
+		projects, err := c.Projects.GetUserProjects(username)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -35,7 +34,7 @@ func GetUserProjectsRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func CreateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
+func CreateProjectRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		username := ctx.GetString("username")
 		project := models.Project{}
@@ -44,7 +43,7 @@ func CreateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse request body"})
 			return
 		}
-		createdProject, err := handlers.CreateProject(ctx, s, project, username)
+		createdProject, err := c.Projects.CreateProject(ctx, project, username)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -53,7 +52,7 @@ func CreateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func GetProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
+func GetProjectRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -61,7 +60,7 @@ func GetProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse project id"})
 			return
 		}
-		project, err := handlers.GetProject(s, id, requester)
+		project, err := c.Projects.GetProject(id, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -70,7 +69,7 @@ func GetProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func UpdateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
+func UpdateProjectRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -84,7 +83,7 @@ func UpdateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse request body"})
 			return
 		}
-		err = handlers.UpdateProject(s, project, requester)
+		err = c.Projects.UpdateProject(project, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -93,7 +92,7 @@ func UpdateProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func DeleteProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
+func DeleteProjectRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -101,7 +100,7 @@ func DeleteProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse project id"})
 			return
 		}
-		err = handlers.DeleteProject(s, id, requester)
+		err = c.Projects.DeleteProject(ctx, id, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -110,7 +109,7 @@ func DeleteProjectRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func GetParticipantsRoute(s *storage.Storage) func(ctx *gin.Context) {
+func GetParticipantsRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -118,7 +117,7 @@ func GetParticipantsRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse project id"})
 			return
 		}
-		participants, err := handlers.GetParticipants(s, id, requester)
+		participants, err := c.Projects.GetParticipants(id, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -127,7 +126,7 @@ func GetParticipantsRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func AddParticipantRoute(s *storage.Storage) func(ctx *gin.Context) {
+func AddParticipantRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -140,7 +139,7 @@ func AddParticipantRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "new participant username not defined"})
 			return
 		}
-		err = handlers.AddParticipant(s, id, username, requester)
+		err = c.Projects.AddParticipant(id, username, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
@@ -149,12 +148,12 @@ func AddParticipantRoute(s *storage.Storage) func(ctx *gin.Context) {
 	}
 }
 
-func RemoveParticipantRoute(s *storage.Storage) func(ctx *gin.Context) {
+func RemoveParticipantRoute(c *core.Core) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		requester := ctx.GetString("username")
 		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			ctx.Error(appErrors.BadRequest("failed to parse project id"))
+			ctx.Error(apperrors.BadRequest("failed to parse project id"))
 			return
 		}
 		username := ctx.Param("username")
@@ -162,7 +161,7 @@ func RemoveParticipantRoute(s *storage.Storage) func(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "new participant username not defined"})
 			return
 		}
-		err = handlers.RemoveParticipant(s, id, username, requester)
+		err = c.Projects.RemoveParticipant(id, username, requester)
 		if err != nil {
 			ctx.Error(err)
 			return
