@@ -26,6 +26,14 @@ func (s *Storage) ProjectRepository() ProjectRepository {
 	return &projectRepositoryImpl{db: s.db}
 }
 
+func (s *Storage) ServiceRepository() ServiceRepository {
+	return &serviceRepositoryImpl{db: s.db}
+}
+
+func (s *Storage) ManagedServiceRepository() ManagedServiceRepository {
+	return &managedServiceRepositoryImpl{db: s.db}
+}
+
 func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 	var tx *sqlx.Tx
 

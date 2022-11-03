@@ -5,11 +5,10 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/pkger"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/kuzznya/letsdeploy/app/util/validations"
-	"github.com/markbates/pkger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -21,7 +20,7 @@ type DbConfig struct {
 	Database string
 }
 
-func Setup(cfg *viper.Viper) *sqlx.DB {
+func New(cfg *viper.Viper) *sqlx.DB {
 	config := DbConfig{
 		Host:     cfg.GetString("postgres.host"),
 		Username: cfg.GetString("postgres.username"),
@@ -53,9 +52,11 @@ func Setup(cfg *viper.Viper) *sqlx.DB {
 		log.WithError(err).Panicln("cannot create migration driver from existing sqlx DB")
 	}
 
-	migrationsModule := "/app/infrastructure/database/migrations"
-	pkger.Include(migrationsModule)
-	m, err := migrate.NewWithDatabaseInstance("pkger://"+migrationsModule, "postgres", driver)
+	migrationsPath := cfg.GetString("migrations.path")
+	if migrationsPath == "" {
+		log.Panicln("migrations.path is not defined")
+	}
+	m, err := migrate.NewWithDatabaseInstance("file://"+migrationsPath, "postgres", driver)
 	if err != nil {
 		log.Panicln(fmt.Errorf("error creating migrate instance: %w", err))
 	}

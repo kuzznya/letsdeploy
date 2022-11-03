@@ -36,8 +36,26 @@ func (s *ServerError) Format(state fmt.State, verb rune) {
 	}
 }
 
+func ServerErrorFromCause(err error) (serverError *ServerError, found bool) {
+	for err != nil {
+		if e, ok := err.(*ServerError); ok {
+			return e, true
+		}
+		err = errors.Unwrap(err)
+	}
+	return nil, false
+}
+
 func Wrap(err error, code int, message string) error {
 	return errors.WithStack(&ServerError{cause: err, Code: code, Message: message})
+}
+
+func WrapNonAppError(err error, message string) error {
+	if se, found := ServerErrorFromCause(err); found {
+		return se
+	} else {
+		return BadRequestWrap(err, message)
+	}
 }
 
 func BadRequest(message string) error {
@@ -70,6 +88,11 @@ func NotFound(message string) error {
 
 func NotFoundWrap(err error, message string) error {
 	return Wrap(err, http.StatusNotFound, message)
+}
+
+func IsNotFound(err error) bool {
+	se, found := ServerErrorFromCause(err)
+	return found && se.Code == http.StatusNotFound
 }
 
 func InternalServerError(message string) error {

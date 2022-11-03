@@ -1,10 +1,17 @@
 package middleware
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 )
 
-func Auth(ctx *gin.Context) {
+const authContextKey = "authentication"
+
+type Authentication struct {
+	Username string
+}
+
+func AuthMiddleware(ctx *gin.Context) {
 	//headerValue := ctx.GetHeader("Authorization")
 	//if headerValue == "" || len(headerValue) < 8 || headerValue[:7] != "Bearer" {
 	//	ctx.JSON(http.StatusUnauthorized,
@@ -21,5 +28,9 @@ func Auth(ctx *gin.Context) {
 	////token := headerValue[7:]
 	//// TODO
 	//panic("TODO")
-	ctx.Set("username", "kuzznya")
+	ctx.Set(authContextKey, &Authentication{Username: "kuzznya"})
+}
+
+func GetAuth(ctx context.Context) *Authentication {
+	return ctx.Value(authContextKey).(*Authentication)
 }

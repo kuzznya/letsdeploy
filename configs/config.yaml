@@ -2,3 +2,10 @@ postgres:
   host: localhost:5432
   username: postgres
   database: postgres
+migrations:
+  path: migrations
+openapi:
+  path: api/openapi.yaml
+
+log:
+  level: debug

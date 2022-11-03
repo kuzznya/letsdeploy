@@ -1,0 +1,504 @@
+openapi: 3.0.3
+
+info:
+  title: Letsdeploy API
+  description: Letsdeploy API allows users to deploy simple projects to K8s
+  version: 0.0.1
+
+security:
+  - oidc:
+      - openid
+
+tags:
+  - name: project
+    description: Projects API
+  - name: service
+    description: Services API
+  - name: managed_service
+    description: Managed Services API
+
+paths:
+  /api/v1/projects:
+    get:
+      operationId: GetProjects
+      tags:
+        - project
+      summary: Returns user projects
+      description: Returns a list of projects that user has access to
+      responses:
+        200:
+          description: A JSON array of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Error'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: CreateProject
+      tags:
+        - project
+      summary: Create new project
+      description: Returns created project
+      requestBody:
+        description: New project data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+      responses:
+        200:
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+
+    get:
+      operationId: GetProject
+      tags:
+        - project
+      summary: Get project by id
+      description: Returns project if user is a participant of that project
+      responses:
+        200:
+          description: Retrieved project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectInfo'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: DeleteProject
+      tags:
+        - project
+      summary: Delete project
+      responses:
+        200:
+          description: Success
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/participants:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+
+    get:
+      operationId: GetProjectParticipants
+      tags:
+        - project
+      summary: Get project participants
+      responses:
+        200:
+          description: List of participants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/participants/{username}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+
+    put:
+      operationId: AddProjectParticipant
+      tags:
+        - project
+      summary: Add participant to the project
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: RemoveProjectParticipant
+      tags:
+        - project
+      summary: Remove participant from the project
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/services:
+    post:
+      operationId: CreateService
+      tags:
+        - service
+      summary: Create new service
+      description: Returns created service
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        200:
+          description: Created service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/services/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    get:
+      operationId: GetService
+      tags:
+        - service
+      summary: Get service
+      description: Returns found service if user is a participant of a project the service belongs to
+      responses:
+        200:
+          description: Retrieved service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      operationId: UpdateService
+      tags:
+        - service
+      summary: Update service
+      description: Returns updated service if user is a participant of a project the service belongs to
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        200:
+          description: Updated service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: DeleteService
+      tags:
+        - service
+      summary: Delete service from the project
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/managed_services:
+    post:
+      operationId: CreateManagedService
+      tags:
+        - managed_service
+      summary: Create new managed service
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagedService'
+      responses:
+        200:
+          description: Created managed service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedService'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/managed_services/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    get:
+      operationId: GetManagedService
+      tags:
+        - managed_service
+      summary: Get managed service
+      description: Returns managed service if user is a participant of a project the managed service belongs to
+      responses:
+        200:
+          description: Retrieved managed service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedService'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: DeleteManagedService
+      tags:
+        - managed_service
+      summary: Delete managed service
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: https://auth.kuzznya.com/realms/letsdeploy/.well-known/openid-configuration
+
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+      required:
+        - id
+
+    ProjectInfo:
+      description: Project information with services and managed services
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            participants:
+              type: array
+              items:
+                type: string
+            services:
+              type: array
+              items:
+                $ref: '#/components/schemas/Service'
+            managedServices:
+              type: array
+              items:
+                $ref: '#/components/schemas/ManagedService'
+          required:
+            - participants
+            - services
+            - managedServices
+
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        project:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9]+$
+        image:
+          type: string
+          minLength: 1
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+      required:
+        - project
+        - name
+        - image
+        - port
+
+    ManagedService:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        project:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - postgres
+            - mysql
+            - rabbitmq
+            - redis
+      required:
+        - project
+        - name
+        - type
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: User is unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: User is forbidden to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
