@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	oapiMiddleware "github.com/deepmap/oapi-codegen/pkg/gin-middleware"
+	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/kuzznya/letsdeploy/app/core"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/database"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var logLevels = map[string]log.Level{
@@ -41,16 +44,41 @@ func Start() {
 	s := server.New(c)
 
 	r := gin.Default()
-	r.Use(openApiValidatorMiddleware(cfg))
+	r.Use(openApiValidatorMiddleware("/api/v1"))
 	r.Use(middleware.ErrorHandler)
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://letsdeploy.space", "http://localhost:5173"},
+		AllowMethods:     []string{"*"},
+		AllowHeaders:     []string{"*"},
+		AllowCredentials: true,
+		AllowWebSockets:  true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	handler := openapi.NewStrictHandler(s, make([]openapi.StrictMiddlewareFunc, 0))
 	openapi.RegisterHandlersWithOptions(r, handler, openapi.GinServerOptions{
-		Middlewares: []openapi.MiddlewareFunc{middleware.AuthMiddleware},
+		Middlewares: []openapi.MiddlewareFunc{middleware.CreateAuthMiddleware(cfg)},
 		ErrorHandler: func(ctx *gin.Context, err error, code int) {
 			ctx.JSON(code, gin.H{"error": err.Error()})
 		},
 	})
+
+	r.Use(func(ctx *gin.Context) {
+		if ctx.Request.Method == http.MethodOptions {
+			ctx.AbortWithStatus(200)
+		}
+	})
+
+	r.GET("/v3/api-docs", func(ctx *gin.Context) {
+		docs, err := openapi.GetSwagger()
+		if err != nil {
+			ctx.Error(err)
+			return
+		}
+		ctx.JSON(200, docs)
+	})
+	r.StaticFile("swagger-ui.html", "./static/swagger-ui.html")
+	r.StaticFile("oauth2-redirect.html", "./static/oauth2-redirect.html")
 
 	r.GET("/health", healthcheck)
 
@@ -106,16 +134,29 @@ func setupK8sClientset(cfg *viper.Viper) *kubernetes.Clientset {
 	return clienset
 }
 
-func openApiValidatorMiddleware(cfg *viper.Viper) gin.HandlerFunc {
-	openapiPath := cfg.GetString("openapi.path")
-	if openapiPath == "" {
-		log.Panicln("openapi.path parameter unset")
+func openApiValidatorMiddleware(includePaths ...string) gin.HandlerFunc {
+	apiDocs, err := openapi.GetSwagger()
+	if err != nil {
+		log.WithError(err).Panicln("Failed to get OpenAPI docs")
 	}
-	validator, err := oapiMiddleware.OapiValidatorFromYamlFile(openapiPath)
+	options := oapiMiddleware.Options{
+		Options: openapi3filter.Options{
+			AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
+		},
+	}
+	validator := oapiMiddleware.OapiRequestValidatorWithOptions(apiDocs, &options)
 	if err != nil {
 		log.WithError(err).Panicln("Failed to create OpenAPI validator middleware")
 	}
-	return validator
+	return func(ctx *gin.Context) {
+		for _, path := range includePaths {
+			if strings.HasPrefix(ctx.FullPath(), path) {
+				validator(ctx)
+				return
+			}
+		}
+		ctx.Next()
+	}
 }
 
 func healthcheck(ctx *gin.Context) {

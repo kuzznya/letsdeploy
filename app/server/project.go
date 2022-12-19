@@ -8,7 +8,7 @@ import (
 )
 
 func (s Server) GetProjects(ctx context.Context, _ openapi.GetProjectsRequestObject) (openapi.GetProjectsResponseObject, error) {
-	projects, err := s.core.Projects.GetUserProjects(middleware.GetAuth(ctx).Username)
+	projects, err := s.core.Projects.GetUserProjects(middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get user projects")
 	}
@@ -16,7 +16,7 @@ func (s Server) GetProjects(ctx context.Context, _ openapi.GetProjectsRequestObj
 }
 
 func (s Server) CreateProject(ctx context.Context, request openapi.CreateProjectRequestObject) (openapi.CreateProjectResponseObject, error) {
-	project, err := s.core.Projects.CreateProject(ctx, *request.Body, middleware.GetAuth(ctx).Username)
+	project, err := s.core.Projects.CreateProject(ctx, *request.Body, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new project")
 	}
@@ -24,7 +24,7 @@ func (s Server) CreateProject(ctx context.Context, request openapi.CreateProject
 }
 
 func (s Server) GetProject(ctx context.Context, request openapi.GetProjectRequestObject) (openapi.GetProjectResponseObject, error) {
-	info, err := s.core.Projects.GetProjectInfo(request.Id, middleware.GetAuth(ctx).Username)
+	info, err := s.core.Projects.GetProjectInfo(request.Id, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get project")
 	}
@@ -32,7 +32,7 @@ func (s Server) GetProject(ctx context.Context, request openapi.GetProjectReques
 }
 
 func (s Server) DeleteProject(ctx context.Context, request openapi.DeleteProjectRequestObject) (openapi.DeleteProjectResponseObject, error) {
-	err := s.core.Projects.DeleteProject(ctx, request.Id, middleware.GetAuth(ctx).Username)
+	err := s.core.Projects.DeleteProject(ctx, request.Id, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to delete project")
 	}
@@ -40,7 +40,7 @@ func (s Server) DeleteProject(ctx context.Context, request openapi.DeleteProject
 }
 
 func (s Server) GetProjectParticipants(ctx context.Context, request openapi.GetProjectParticipantsRequestObject) (openapi.GetProjectParticipantsResponseObject, error) {
-	participants, err := s.core.Projects.GetParticipants(request.Id, middleware.GetAuth(ctx).Username)
+	participants, err := s.core.Projects.GetParticipants(request.Id, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get project participants")
 	}
@@ -48,7 +48,7 @@ func (s Server) GetProjectParticipants(ctx context.Context, request openapi.GetP
 }
 
 func (s Server) RemoveProjectParticipant(ctx context.Context, request openapi.RemoveProjectParticipantRequestObject) (openapi.RemoveProjectParticipantResponseObject, error) {
-	err := s.core.Projects.RemoveParticipant(request.Id, request.Username, middleware.GetAuth(ctx).Username)
+	err := s.core.Projects.RemoveParticipant(request.Id, request.Username, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to remove project participant")
 	}
@@ -56,9 +56,38 @@ func (s Server) RemoveProjectParticipant(ctx context.Context, request openapi.Re
 }
 
 func (s Server) AddProjectParticipant(ctx context.Context, request openapi.AddProjectParticipantRequestObject) (openapi.AddProjectParticipantResponseObject, error) {
-	err := s.core.Projects.AddParticipant(request.Id, request.Username, middleware.GetAuth(ctx).Username)
+	err := s.core.Projects.AddParticipant(request.Id, request.Username, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to add project participant")
 	}
 	return openapi.AddProjectParticipant200Response{}, nil
+}
+
+func (s Server) GetSecrets(ctx context.Context, request openapi.GetSecretsRequestObject) (openapi.GetSecretsResponseObject, error) {
+	secrets, err := s.core.Projects.GetSecrets(request.Id, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get project secrets")
+	}
+	return openapi.GetSecrets200JSONResponse(secrets), nil
+}
+
+func (s Server) CreateSecret(ctx context.Context, request openapi.CreateSecretRequestObject) (openapi.CreateSecretResponseObject, error) {
+	secret, err := s.core.Projects.CreateSecret(
+		ctx,
+		request.Id,
+		openapi.Secret{Name: request.Body.Name},
+		request.Body.Value,
+		middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new secret")
+	}
+	return openapi.CreateSecret200JSONResponse(*secret), nil
+}
+
+func (s Server) DeleteSecret(ctx context.Context, request openapi.DeleteSecretRequestObject) (openapi.DeleteSecretResponseObject, error) {
+	err := s.core.Projects.DeleteSecret(ctx, request.Id, request.Name, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to delete secret")
+	}
+	return openapi.DeleteSecret200Response{}, nil
 }

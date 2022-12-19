@@ -4,31 +4,39 @@ import (
 	"context"
 	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
+	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
+	"github.com/kuzznya/letsdeploy/app/util/promise"
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
 	"github.com/procyon-projects/chrono"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applyConfigsV1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"time"
+	"strings"
 )
 
 const namespaceLabel = "letsdeploy.space/project-namespace"
+const secretKey = "value"
 
 type Projects interface {
-	CreateProject(ctx context.Context, project openapi.Project, author string) (*openapi.Project, error)
-	GetProject(id string, requester string) (*openapi.Project, error)
-	GetProjectInfo(id string, requester string) (*openapi.ProjectInfo, error)
-	UpdateProject(project openapi.Project, requester string) error
-	DeleteProject(ctx context.Context, id string, requester string) error
-	GetUserProjects(username string) ([]openapi.Project, error)
-	GetParticipants(id string, requester string) ([]string, error)
-	AddParticipant(id string, username string, requester string) error
-	RemoveParticipant(id string, username string, requester string) error
-	checkAccess(id string, user string) error
+	projectSynchronizable
+	FindAll(limit int, offset int) ([]openapi.Project, error)
+	CreateProject(ctx context.Context, project openapi.Project, auth middleware.Authentication) (*openapi.Project, error)
+	GetProject(id string, auth middleware.Authentication) (*openapi.Project, error)
+	GetProjectInfo(id string, auth middleware.Authentication) (*openapi.ProjectInfo, error)
+	UpdateProject(project openapi.Project, auth middleware.Authentication) error
+	DeleteProject(ctx context.Context, id string, auth middleware.Authentication) error
+	GetUserProjects(auth middleware.Authentication) ([]openapi.Project, error)
+	GetParticipants(id string, auth middleware.Authentication) ([]string, error)
+	AddParticipant(id string, username string, auth middleware.Authentication) error
+	RemoveParticipant(id string, username string, auth middleware.Authentication) error
+	GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error)
+	CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error)
+	DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error
+	checkAccess(id string, auth middleware.Authentication) error
 }
 
 type projectsImpl struct {
@@ -42,25 +50,31 @@ type projectsImpl struct {
 func InitProjects(
 	storage *storage.Storage,
 	clientset *kubernetes.Clientset,
-	scheduler chrono.TaskScheduler,
+	core promise.Promise[Core],
 ) Projects {
-	projects := projectsImpl{storage: storage, clientset: clientset, scheduler: scheduler}
-	_, err := projects.scheduler.ScheduleWithFixedDelay(projects.syncKubernetes, 1*time.Minute)
+	p := &projectsImpl{storage: storage, clientset: clientset}
+	core.OnProvided(func(core Core) {
+		p.services = core.Services
+		p.managedServices = core.ManagedServices
+	})
+	return p
+}
+
+func (p projectsImpl) FindAll(limit int, offset int) ([]openapi.Project, error) {
+	entities, err := p.storage.ProjectRepository().FindAll(limit, offset)
 	if err != nil {
-		log.WithError(err).Panicln("Unable to schedule k8s synchronization")
+		return nil, errors.Wrap(err, "failed to retrieve projects")
 	}
-	return &projects
+	projects := make([]openapi.Project, len(entities))
+	for i, entity := range entities {
+		projects[i] = openapi.Project{
+			Id: entity.Id,
+		}
+	}
+	return projects, nil
 }
 
-func (p projectsImpl) setServices(services Services) {
-	p.services = services
-}
-
-func (p projectsImpl) setManagedServices(managedServices ManagedServices) {
-	p.managedServices = managedServices
-}
-
-func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project, author string) (*openapi.Project, error) {
+func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project, auth middleware.Authentication) (*openapi.Project, error) {
 	exists, err := p.storage.ProjectRepository().ExistsByID(project.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot check if project with this name already exists")
@@ -75,7 +89,7 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 		}
 		project.Id = id
 
-		err = s.ProjectRepository().AddParticipant(id, author)
+		err = s.ProjectRepository().AddParticipant(id, auth.Username)
 		if err != nil {
 			return err
 		}
@@ -93,8 +107,8 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 	return &project, nil
 }
 
-func (p projectsImpl) GetProject(id string, requester string) (*openapi.Project, error) {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) GetProject(id string, auth middleware.Authentication) (*openapi.Project, error) {
+	if err := p.checkAccess(id, auth); err != nil {
 		return nil, err
 	}
 	record, err := p.storage.ProjectRepository().FindByID(id)
@@ -104,8 +118,8 @@ func (p projectsImpl) GetProject(id string, requester string) (*openapi.Project,
 	return &openapi.Project{Id: record.Id}, nil
 }
 
-func (p projectsImpl) GetProjectInfo(id string, requester string) (*openapi.ProjectInfo, error) {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) GetProjectInfo(id string, auth middleware.Authentication) (*openapi.ProjectInfo, error) {
+	if err := p.checkAccess(id, auth); err != nil {
 		return nil, err
 	}
 	record, err := p.storage.ProjectRepository().FindByID(id)
@@ -116,11 +130,12 @@ func (p projectsImpl) GetProjectInfo(id string, requester string) (*openapi.Proj
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project participants")
 	}
-	services, err := p.services.GetProjectServices(id, requester)
+	fmt.Printf("services: %+v\n", p.services)
+	services, err := p.services.GetProjectServices(id, auth)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project services")
 	}
-	managedServices, err := p.managedServices.GetProjectManagedServices(id, requester)
+	managedServices, err := p.managedServices.GetProjectManagedServices(id, auth)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project managed services")
 	}
@@ -133,8 +148,8 @@ func (p projectsImpl) GetProjectInfo(id string, requester string) (*openapi.Proj
 	}, nil
 }
 
-func (p projectsImpl) UpdateProject(project openapi.Project, requester string) error {
-	if err := p.checkAccess(project.Id, requester); err != nil {
+func (p projectsImpl) UpdateProject(project openapi.Project, auth middleware.Authentication) error {
+	if err := p.checkAccess(project.Id, auth); err != nil {
 		return err
 	}
 	record := storage.ProjectEntity{Id: project.Id}
@@ -145,8 +160,8 @@ func (p projectsImpl) UpdateProject(project openapi.Project, requester string) e
 	return nil
 }
 
-func (p projectsImpl) DeleteProject(ctx context.Context, id string, requester string) error {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) DeleteProject(ctx context.Context, id string, auth middleware.Authentication) error {
+	if err := p.checkAccess(id, auth); err != nil {
 		return err
 	}
 	err := p.storage.ExecTx(ctx, func(s *storage.Storage) error {
@@ -155,7 +170,7 @@ func (p projectsImpl) DeleteProject(ctx context.Context, id string, requester st
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
-		err = p.storage.ProjectRepository().Delete(id)
+		err = s.ProjectRepository().Delete(id)
 		if err != nil {
 			return err
 		}
@@ -167,8 +182,8 @@ func (p projectsImpl) DeleteProject(ctx context.Context, id string, requester st
 	return nil
 }
 
-func (p projectsImpl) GetUserProjects(username string) ([]openapi.Project, error) {
-	projects, err := p.storage.ProjectRepository().FindUserProjects(username)
+func (p projectsImpl) GetUserProjects(auth middleware.Authentication) ([]openapi.Project, error) {
+	projects, err := p.storage.ProjectRepository().FindUserProjects(auth.Username)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find user's projects")
 	}
@@ -179,8 +194,8 @@ func (p projectsImpl) GetUserProjects(username string) ([]openapi.Project, error
 	return result, nil
 }
 
-func (p projectsImpl) GetParticipants(id string, requester string) ([]string, error) {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) GetParticipants(id string, auth middleware.Authentication) ([]string, error) {
+	if err := p.checkAccess(id, auth); err != nil {
 		return nil, err
 	}
 	participants, err := p.storage.ProjectRepository().GetParticipants(id)
@@ -190,8 +205,8 @@ func (p projectsImpl) GetParticipants(id string, requester string) ([]string, er
 	return participants, nil
 }
 
-func (p projectsImpl) AddParticipant(id string, username string, requester string) error {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) AddParticipant(id string, username string, auth middleware.Authentication) error {
+	if err := p.checkAccess(id, auth); err != nil {
 		return err
 	}
 	err := p.storage.ProjectRepository().AddParticipant(id, username)
@@ -201,8 +216,8 @@ func (p projectsImpl) AddParticipant(id string, username string, requester strin
 	return nil
 }
 
-func (p projectsImpl) RemoveParticipant(id string, username string, requester string) error {
-	if err := p.checkAccess(id, requester); err != nil {
+func (p projectsImpl) RemoveParticipant(id string, username string, auth middleware.Authentication) error {
+	if err := p.checkAccess(id, auth); err != nil {
 		return err
 	}
 	err := p.storage.ProjectRepository().RemoveParticipant(id, username)
@@ -212,8 +227,87 @@ func (p projectsImpl) RemoveParticipant(id string, username string, requester st
 	return nil
 }
 
-func (p projectsImpl) checkAccess(id string, user string) error {
-	isParticipant, err := p.storage.ProjectRepository().IsParticipant(id, user)
+func (p projectsImpl) GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error) {
+	if err := p.checkAccess(projectId, auth); err != nil {
+		return nil, err
+	}
+	entities, err := p.storage.SecretRepository().FindByProjectId(projectId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get project secrets")
+	}
+	secrets := make([]openapi.Secret, len(entities))
+	for i, entity := range entities {
+		secrets[i] = openapi.Secret{
+			Name:             entity.Name,
+			ManagedServiceId: entity.ManagedServiceId,
+		}
+	}
+	return secrets, nil
+}
+
+func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error) {
+	if err := p.checkAccess(projectId, auth); err != nil {
+		return nil, err
+	}
+	exists, err := p.storage.SecretRepository().ExistsByName(secret.Name)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check if secret already exists")
+	}
+	if exists {
+		return nil, apperrors.BadRequest(fmt.Sprintf("Secret %s already exists in the project", secret.Name))
+	}
+	entity := storage.SecretEntity{
+		ProjectId: projectId,
+		Name:      secret.Name,
+		Value:     value,
+	}
+	err = p.storage.ExecTx(ctx, func(s *storage.Storage) error {
+		err := s.SecretRepository().CreateNew(entity)
+		if err != nil {
+			return err
+		}
+
+		config := applyConfigsV1.Secret(strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), projectId).
+			WithStringData(map[string]string{secretKey: value})
+		_, err = p.clientset.CoreV1().Secrets(projectId).Apply(ctx, config, metav1.ApplyOptions{FieldManager: "letsdeploy"})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new secret")
+	}
+	return &secret, nil
+}
+
+func (p projectsImpl) DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error {
+	if err := p.checkAccess(projectId, auth); err != nil {
+		return err
+	}
+	secret, err := p.storage.SecretRepository().FindByName(name)
+	if err != nil && !apperrors.IsNotFound(err) {
+		return errors.Wrap(err, "failed to check access to existing secret")
+	}
+	if secret != nil && secret.ManagedServiceId != nil {
+		return apperrors.Forbidden("Managed service password secret deletion is forbidden")
+	}
+	err = p.storage.SecretRepository().DeleteByName(name)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete secret")
+	}
+	err = p.clientset.CoreV1().Secrets(projectId).Delete(ctx, strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), metav1.DeleteOptions{})
+	if err != nil {
+		log.WithError(err).Warnln("Failed to delete secret from Kubernetes")
+	}
+	return nil
+}
+
+func (p projectsImpl) checkAccess(id string, auth middleware.Authentication) error {
+	if auth == middleware.ServiceAccount {
+		return nil
+	}
+	isParticipant, err := p.storage.ProjectRepository().IsParticipant(id, auth.Username)
 	if err != nil {
 		return errors.Wrap(err, "project access check unexpected failure")
 	}
@@ -224,57 +318,25 @@ func (p projectsImpl) checkAccess(id string, user string) error {
 }
 
 func (p projectsImpl) createProjectNamespace(ctx context.Context, project openapi.Project) error {
-	namespace, err := p.clientset.CoreV1().Namespaces().Get(ctx, project.Id, metav1.GetOptions{})
-	if err == nil {
-		log.Infof("Namespace %s already exists, not creating new one", namespace.Name)
-		return nil
-	}
-	namespace, err = p.clientset.CoreV1().Namespaces().Create(
-		ctx,
-		&v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: project.Id,
-			},
-		},
-		metav1.CreateOptions{})
+	config := applyConfigsV1.Namespace(project.Id).WithLabels(map[string]string{namespaceLabel: "true"})
+	_, err := p.clientset.CoreV1().Namespaces().Apply(ctx, config, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return err
 	}
-	log.Infof("Namespace %s created for a project", namespace.Name)
+	log.Infof("Namespace %s created/updated for a project", project.Id)
 	return nil
 }
 
-func (p projectsImpl) syncKubernetes(ctx context.Context) {
-	log.Infoln("Projects sync started")
-
-	limit := 1000
-	offset := 0
-	checkedProjects := make(map[string]bool)
-	for {
-		projects, err := p.storage.ProjectRepository().FindAll(limit, offset)
-		if err != nil {
-			log.WithError(err).Errorln("Failed to retrieve projects")
-			return
-		}
-		for _, project := range projects {
-			checkedProjects[project.Id] = true
-			err := p.createProjectNamespace(ctx, openapi.Project{Id: project.Id})
-			if err != nil {
-				log.WithError(err).Errorf("Failed to create namespace for project %d to synchronize, skipping", project.Id)
-			}
-
-			// TODO call Services and ManagedServices to check Deployments and StatefulSets
-
-			log.Debugf("Project %s checked, namespace exists or was created", project.Id)
-		}
-		if len(projects) < limit {
-			break
-		}
+func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) error {
+	err := p.createProjectNamespace(ctx, openapi.Project{Id: projectId})
+	if err != nil {
+		return errors.Wrap(err, "failed to create project namespace")
 	}
 
-	p.removeExcessNamespaces(ctx, checkedProjects)
+	// TODO sync secrets
 
-	log.Infof("Projects sync finished")
+	log.Debugf("Project %s checked, namespace exists or was created", projectId)
+	return nil
 }
 
 func (p projectsImpl) removeExcessNamespaces(ctx context.Context, checkedProjects map[string]bool) {

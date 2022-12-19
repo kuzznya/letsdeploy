@@ -8,7 +8,7 @@ import (
 )
 
 func (s Server) CreateManagedService(ctx context.Context, request openapi.CreateManagedServiceRequestObject) (openapi.CreateManagedServiceResponseObject, error) {
-	service, err := s.core.ManagedServices.CreateManagedService(ctx, *request.Body, middleware.GetAuth(ctx).Username)
+	service, err := s.core.ManagedServices.CreateManagedService(ctx, *request.Body, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create managed service")
 	}
@@ -16,7 +16,7 @@ func (s Server) CreateManagedService(ctx context.Context, request openapi.Create
 }
 
 func (s Server) GetManagedService(ctx context.Context, request openapi.GetManagedServiceRequestObject) (openapi.GetManagedServiceResponseObject, error) {
-	service, err := s.core.ManagedServices.GetManagedService(request.Id, middleware.GetAuth(ctx).Username)
+	service, err := s.core.ManagedServices.GetManagedService(request.Id, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get managed service")
 	}
@@ -24,7 +24,7 @@ func (s Server) GetManagedService(ctx context.Context, request openapi.GetManage
 }
 
 func (s Server) DeleteManagedService(ctx context.Context, request openapi.DeleteManagedServiceRequestObject) (openapi.DeleteManagedServiceResponseObject, error) {
-	err := s.core.ManagedServices.DeleteManagedService(ctx, request.Id, middleware.GetAuth(ctx).Username)
+	err := s.core.ManagedServices.DeleteManagedService(ctx, request.Id, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, err
 	}

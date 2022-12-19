@@ -4,8 +4,8 @@ postgres:
   database: postgres
 migrations:
   path: migrations
-openapi:
-  path: api/openapi.yaml
-
 log:
   level: debug
+oidc:
+  provider: https://auth.kuzznya.com/realms/letsdeploy
+  username-claim: preferred_username

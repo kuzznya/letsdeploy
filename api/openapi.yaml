@@ -6,6 +6,7 @@ info:
   version: 0.0.1
 
 security:
+  - jwt: []
   - oidc:
       - openid
 
@@ -46,13 +47,11 @@ paths:
                       $ref: '#/components/schemas/Error'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     post:
       operationId: CreateProject
       tags:
         - project
       summary: Create new project
-      description: Returns created project
       requestBody:
         description: New project data
         required: true
@@ -82,7 +81,6 @@ paths:
         schema:
           type: string
           pattern: ^[a-zA-Z0-9_-]{3,100}$
-
     get:
       operationId: GetProject
       tags:
@@ -102,7 +100,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     delete:
       operationId: DeleteProject
       tags:
@@ -126,7 +123,6 @@ paths:
         schema:
           type: string
           pattern: ^[a-zA-Z0-9_-]{3,100}$
-
     get:
       operationId: GetProjectParticipants
       tags:
@@ -162,7 +158,6 @@ paths:
         schema:
           type: string
           minLength: 1
-
     put:
       operationId: AddProjectParticipant
       tags:
@@ -179,12 +174,104 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     delete:
       operationId: RemoveProjectParticipant
       tags:
         - project
       summary: Remove participant from the project
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/secrets:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+    get:
+      operationId: GetSecrets
+      tags:
+        - project
+      summary: Get project secrets
+      responses:
+        200:
+          description: List of secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Secret'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      operationId: CreateSecret
+      tags:
+        - project
+      summary: Create secret
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Secret'
+                - properties:
+                    value:
+                      type: string
+                  required:
+                    - value
+      responses:
+        200:
+          description: Created project secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Secret'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/secrets/{name}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]{3,100}$
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+    delete:
+      operationId: DeleteSecret
+      tags:
+        - project
+      summary: Delete secret
       responses:
         200:
           description: Success
@@ -232,7 +319,6 @@ paths:
         required: true
         schema:
           type: integer
-
     get:
       operationId: GetService
       tags:
@@ -254,7 +340,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     put:
       operationId: UpdateService
       tags:
@@ -281,12 +366,95 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     delete:
       operationId: DeleteService
       tags:
         - service
       summary: Delete service from the project
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/services/{id}/env:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: GetServiceEnvVars
+      tags:
+        - service
+      summary: Get service environment variables list
+      responses:
+        200:
+          description: Retrieved env vars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnvVar'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      operationId: SetServiceEnvVar
+      tags:
+        - service
+      summary: Create or update service environment variable
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvVar'
+      responses:
+        200:
+          description: Created or updated environment variable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvVar'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/services/{id}/env/{name}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: DeleteServiceEnvVar
+      tags:
+        - service
+      summary: Delete service environment variable
       responses:
         200:
           description: Success
@@ -333,7 +501,6 @@ paths:
         required: true
         schema:
           type: integer
-
     get:
       operationId: GetManagedService
       tags:
@@ -355,7 +522,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
-
     delete:
       operationId: DeleteManagedService
       tags:
@@ -375,6 +541,10 @@ paths:
 
 components:
   securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
     oidc:
       type: openIdConnect
       openIdConnectUrl: https://auth.kuzznya.com/realms/letsdeploy/.well-known/openid-configuration
@@ -433,6 +603,10 @@ components:
           type: integer
           minimum: 1
           maximum: 65535
+        envVars:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnvVar'
       required:
         - project
         - name
@@ -462,6 +636,43 @@ components:
         - project
         - name
         - type
+
+    EnvVar:
+      allOf:
+        - type: object
+          properties:
+            name:
+              type: string
+              pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+          required:
+            - name
+        - oneOf:
+            - type: object
+              properties:
+                value:
+                  type: string
+                  minLength: 1
+              required:
+                - value
+            - type: object
+              properties:
+                secret:
+                  type: string
+                  pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+              required:
+                - secret
+
+    Secret:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+        managedServiceId:
+          type: integer
+          readOnly: true
+      required:
+        - name
 
     Error:
       type: object

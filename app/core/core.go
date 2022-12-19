@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"github.com/kuzznya/letsdeploy/app/storage"
+	"github.com/kuzznya/letsdeploy/app/util/promise"
 	"github.com/procyon-projects/chrono"
 	"k8s.io/client-go/kubernetes"
 )
@@ -12,14 +14,21 @@ type Core struct {
 	ManagedServices ManagedServices
 }
 
+type projectSynchronizable interface {
+	syncKubernetes(ctx context.Context, projectId string) error
+}
+
 func New(storage *storage.Storage, clientset *kubernetes.Clientset, taskScheduler chrono.TaskScheduler) *Core {
-	projects := InitProjects(storage, clientset, taskScheduler)
+	corePromise := promise.New[Core]()
+	projects := InitProjects(storage, clientset, corePromise)
 	services := InitServices(projects, storage, clientset)
-	projects.(projectsImpl).setServices(services) // TODO refactor
 	managedServices := InitManagedServices(projects, storage, clientset)
-	return &Core{
+	core := &Core{
 		Projects:        projects,
 		Services:        services,
 		ManagedServices: managedServices,
 	}
+	corePromise.Resolve(*core)
+	InitSync(core, taskScheduler)
+	return core
 }

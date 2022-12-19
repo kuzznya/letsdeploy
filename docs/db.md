@@ -31,7 +31,7 @@ entity managed_service {
   project_id: <<FK project(id)>>
   name
   type: postgres|mysql|rabbitmq|redis
-  password_secret_id <<FK secret(id)>>
+  auth_secret_id <<FK secret(id)>>
 }
 
 entity env_var {
@@ -46,15 +46,16 @@ entity secret {
   id
   project_id <<FK project(id)>>
   name
-  modifiable default true
+  managed_service_id <<FK managed_service(id)>>
 }
 
-project }o..o{ project_participant
+project }o.left.o{ project_participant
 project ||..o{ service
-service ||..o{ env_var
-env_var |o..o| secret
 project ||..o{ managed_service
+service ||..o{ env_var
+env_var |o.right.o| secret
 project ||..o{ secret
+secret ||.up.o{ managed_service
 
 @enduml
 ```
