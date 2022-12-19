@@ -1,0 +1,24 @@
+@import './base.css';
+
+/*.btn {*/
+/*    border-radius: 5px;*/
+/*    border: none;*/
+/*}*/
+
+.btn-primary {
+    /*background-color: darkblue;*/
+    /*color: white;*/
+}
+
+.btn-primary:hover {
+    background-color: rgb(100, 180, 180);
+}
+
+.btn-primary:focus {
+    background-color: rgb(50, 150, 150);
+}
+
+.btn-primary:disabled {
+    color: lightgray;
+    background-color: rgb(40, 140, 140);
+}

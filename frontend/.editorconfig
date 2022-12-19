@@ -1,0 +1,8 @@
+[*]
+indent_size = 4
+
+[{*.vue, *.js, *.ts, *.json}]
+indent_size = 2
+
+[{*.yml, *.yaml}]
+indent_size = 2
