@@ -54,20 +54,19 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	if err != nil {
 		log.WithError(err).Errorln("Failed to parse JWT")
 		ctx.Error(apperrors.Forbidden("Failed to authenticate user"))
+		ctx.Abort()
 		return
 	}
 	if err := checkClaims(oidcProvider, token); err != nil {
 		log.WithError(err).Errorf("Failed to check claims of token %+v", token)
 		ctx.Error(err)
+		ctx.Abort()
 		return
 	}
 	claim := cfg.GetString("oidc.username-claim")
-	log.Debugf("Username claim: %s\n", claim)
 	username := token.Claims.(jwt.MapClaims)[claim].(string)
-	log.Debugf("Username: %s\n", username)
 	ctx.Set(authContextKey, &Authentication{Username: username, Token: tokenString})
 	log.Debugf("User %s authenticated\n", username)
-	log.Debugf("OK")
 
 	ctx.Next()
 }

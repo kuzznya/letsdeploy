@@ -35,8 +35,13 @@ func ErrorHandler(c *gin.Context) {
 	if len(c.Errors) == 1 {
 		log.WithError(c.Errors.Last().Err).Errorf(
 			"Handler returned error, apperrors.ServerError not found in error chain, responding with 500")
-		if stackErr, ok := c.Errors.Last().Err.(stackError); ok {
-			log.Infof("Error stacktrace: %+v", stackErr.StackTrace())
+		err := c.Errors.Last().Err
+		for err != nil {
+			log.Infof("Cause: %s", err.Error())
+			if stackErr, ok := err.(stackError); ok {
+				log.Infof("Error stacktrace: %+v", stackErr.StackTrace())
+			}
+			err = errors.Unwrap(err)
 		}
 		c.JSON(http.StatusInternalServerError, c.Errors.Last().JSON())
 		return

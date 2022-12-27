@@ -38,6 +38,8 @@ type servicesImpl struct {
 	clientset *kubernetes.Clientset
 }
 
+var _ Services = (*servicesImpl)(nil)
+
 func InitServices(
 	projects Projects,
 	storage *storage.Storage,
@@ -85,6 +87,22 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 		}
 		service.Id = &id
 
+		envVars := mapItems(service.EnvVars, func(v openapi.EnvVar) storage.EnvVarEntity {
+			varEntity := storage.EnvVarEntity{
+				Name:      v.Name,
+				ServiceId: id,
+			}
+			processEnvVar(v,
+				func(e openapi.EnvVar0) { varEntity.Value = sql.NullString{String: e.Value, Valid: true} },
+				func(e openapi.EnvVar1) { varEntity.Secret = sql.NullString{String: e.Secret, Valid: true} })
+			return varEntity
+		})
+
+		_, err = store.EnvVarRepository().CreateOrUpdateAll(envVars)
+		if err != nil {
+			return err
+		}
+
 		err = s.applyServiceDeployment(ctx, service)
 		if err != nil {
 			return err
@@ -100,17 +118,41 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 func (s servicesImpl) GetService(id int, auth middleware.Authentication) (*openapi.Service, error) {
 	entity, err := s.storage.ServiceRepository().FindByID(id)
 	if err != nil {
-		return nil, apperrors.WrapNonAppError(err, "failed to get service by id")
+		return nil, errors.Wrap(err, "failed to get service by id")
 	}
 	if err := s.projects.checkAccess(entity.ProjectId, auth); err != nil {
 		return nil, err
 	}
+	varEntities, err := s.storage.EnvVarRepository().FindByServiceId(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get service env vars")
+	}
+
+	envVars := make([]openapi.EnvVar, len(varEntities))
+	for i, entity := range varEntities {
+		envVars[i] = openapi.EnvVar{Name: entity.Name}
+		if entity.Value.Valid {
+			err := envVars[i].FromEnvVar0(openapi.EnvVar0{Value: entity.Value.String})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to map env var entity to model")
+			}
+		} else if entity.Secret.Valid {
+			err := envVars[i].FromEnvVar1(openapi.EnvVar1{Secret: entity.Secret.String})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to map env var entity to model")
+			}
+		} else {
+			return nil, errors.New("Unknown env var type: both Value and Secret are null")
+		}
+	}
+
 	return &openapi.Service{
 		Id:      &entity.Id,
 		Image:   entity.Image,
 		Name:    entity.Name,
 		Port:    entity.Port,
 		Project: entity.ProjectId,
+		EnvVars: envVars,
 	}, nil
 }
 
@@ -135,6 +177,40 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 			return err
 		}
 
+		prevEnvVars, err := store.EnvVarRepository().FindByServiceId(*service.Id)
+		if err != nil {
+			return err
+		}
+
+		envVars := mapItems(service.EnvVars, func(v openapi.EnvVar) storage.EnvVarEntity {
+			varEntity := storage.EnvVarEntity{
+				Name:      v.Name,
+				ServiceId: *service.Id,
+			}
+			processEnvVar(v,
+				func(e openapi.EnvVar0) { varEntity.Value = sql.NullString{String: e.Value, Valid: true} },
+				func(e openapi.EnvVar1) { varEntity.Secret = sql.NullString{String: e.Secret, Valid: true} })
+			return varEntity
+		})
+
+		_, err = store.EnvVarRepository().CreateOrUpdateAll(envVars)
+		if err != nil {
+			return err
+		}
+
+		envVarNames := make(map[string]bool)
+		for _, v := range envVars {
+			envVarNames[v.Name] = true
+		}
+		for _, prevVar := range prevEnvVars {
+			if _, ok := envVarNames[prevVar.Name]; !ok {
+				err := store.EnvVarRepository().DeleteByServiceIdAndName(*service.Id, prevVar.Name)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		err = s.applyServiceDeployment(ctx, service)
 		if err != nil {
 			return err
@@ -157,6 +233,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		Name:    updated.Name,
 		Port:    updated.Port,
 		Project: updated.ProjectId,
+		EnvVars: service.EnvVars,
 	}
 	return &result, nil
 }
@@ -228,9 +305,9 @@ func (s servicesImpl) SetServiceEnvVar(ctx context.Context, serviceId int, envVa
 		func(e openapi.EnvVar0) { entity.Value = sql.NullString{String: e.Value, Valid: true} },
 		func(e openapi.EnvVar1) { entity.Secret = sql.NullString{String: e.Secret, Valid: true} })
 
-	newEnv := removeFirstByPredicate(*service.EnvVars, func(e openapi.EnvVar) bool { return e.Name == envVar.Name })
+	newEnv := removeFirstByPredicate(service.EnvVars, func(e openapi.EnvVar) bool { return e.Name == envVar.Name })
 	newEnv = append(newEnv, envVar)
-	service.EnvVars = &newEnv
+	service.EnvVars = newEnv
 
 	err = s.storage.ExecTx(ctx, func(store *storage.Storage) error {
 		_, err = store.EnvVarRepository().CreateOrUpdate(entity)
@@ -273,9 +350,9 @@ func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openap
 		WithPorts(applyConfigsCoreV1.ContainerPort().WithContainerPort(int32(service.Port))).
 		WithResources(applyConfigsCoreV1.ResourceRequirements().WithLimits(limits))
 	if service.EnvVars == nil {
-		service.EnvVars = &[]openapi.EnvVar{}
+		service.EnvVars = []openapi.EnvVar{}
 	}
-	for _, envVar := range *service.EnvVars {
+	for _, envVar := range service.EnvVars {
 		processEnvVar(envVar,
 			func(e openapi.EnvVar0) {
 				container = container.WithEnv(applyConfigsCoreV1.EnvVar().WithName(envVar.Name).WithValue(e.Value))

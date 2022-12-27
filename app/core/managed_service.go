@@ -46,6 +46,8 @@ type managedServicesImpl struct {
 	clientset *kubernetes.Clientset
 }
 
+var _ ManagedServices = (*managedServicesImpl)(nil)
+
 func InitManagedServices(
 	projects Projects,
 	storage *storage.Storage,
@@ -86,7 +88,7 @@ func (m managedServicesImpl) CreateManagedService(ctx context.Context, service o
 		}
 		service.Id = &id
 
-		err = m.createManagedServiceDeployment(ctx, service)
+		err = m.createManagedServiceDeployment(ctx, s, service)
 		if err != nil {
 			return err
 		}
@@ -141,12 +143,12 @@ func (m managedServicesImpl) DeleteManagedService(ctx context.Context, id int, a
 	return nil
 }
 
-func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context, service openapi.ManagedService) error {
+func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context, store *storage.Storage, service openapi.ManagedService) error {
 	err := m.createK8sService(ctx, service)
 	if err != nil {
 		return errors.Wrap(err, "failed to create K8s Service for managed service")
 	}
-	err = m.createPasswordSecret(ctx, service)
+	err = m.createPasswordSecret(ctx, store, service)
 	if err != nil {
 		return errors.Wrap(err, "failed to create secret for managed service")
 	}
@@ -177,9 +179,17 @@ func (m managedServicesImpl) createK8sService(ctx context.Context, service opena
 	return nil
 }
 
-func (m managedServicesImpl) createPasswordSecret(ctx context.Context, service openapi.ManagedService) error {
+func (m managedServicesImpl) createPasswordSecret(ctx context.Context, store *storage.Storage, service openapi.ManagedService) error {
+	exists, err := store.SecretRepository().ExistsByProjectIdAndName(service.Project, service.Name+"-password")
+	if err != nil {
+		return errors.Wrap(err, "failed to check if password secret already exists")
+	}
+	if exists {
+		return nil
+	}
+
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	passwordLen := 12
+	passwordLen := 16
 	b := make([]rune, passwordLen)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
@@ -197,7 +207,7 @@ func (m managedServicesImpl) createPasswordSecret(ctx context.Context, service o
 		ManagedServiceId: service.Id,
 	}
 
-	err := m.storage.ExecTx(ctx, func(s *storage.Storage) error {
+	err = store.ExecTx(ctx, func(s *storage.Storage) error {
 		err := s.SecretRepository().CreateNew(secretEntity)
 		if err != nil {
 			return err
@@ -412,7 +422,7 @@ func (m managedServicesImpl) syncKubernetes(ctx context.Context, projectId strin
 	}
 	servicesMap := toMapSelf(services, func(service openapi.ManagedService) string { return service.Name })
 	for _, service := range services {
-		err := m.createManagedServiceDeployment(ctx, service)
+		err := m.createManagedServiceDeployment(ctx, m.storage, service)
 		if err != nil {
 			log.WithError(err).Errorf("Failed to create managed service deployment %s, skipping\n", service.Name)
 		}

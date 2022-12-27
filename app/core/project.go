@@ -47,6 +47,8 @@ type projectsImpl struct {
 	scheduler       chrono.TaskScheduler
 }
 
+var _ Projects = (*projectsImpl)(nil)
+
 func InitProjects(
 	storage *storage.Storage,
 	clientset *kubernetes.Clientset,
@@ -249,7 +251,7 @@ func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret
 	if err := p.checkAccess(projectId, auth); err != nil {
 		return nil, err
 	}
-	exists, err := p.storage.SecretRepository().ExistsByName(secret.Name)
+	exists, err := p.storage.SecretRepository().ExistsByProjectIdAndName(projectId, secret.Name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if secret already exists")
 	}
@@ -285,14 +287,14 @@ func (p projectsImpl) DeleteSecret(ctx context.Context, projectId string, name s
 	if err := p.checkAccess(projectId, auth); err != nil {
 		return err
 	}
-	secret, err := p.storage.SecretRepository().FindByName(name)
+	secret, err := p.storage.SecretRepository().FindByProjectIdAndName(projectId, name)
 	if err != nil && !apperrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to check access to existing secret")
 	}
 	if secret != nil && secret.ManagedServiceId != nil {
 		return apperrors.Forbidden("Managed service password secret deletion is forbidden")
 	}
-	err = p.storage.SecretRepository().DeleteByName(name)
+	err = p.storage.SecretRepository().DeleteByProjectIdAndName(projectId, name)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete secret")
 	}
@@ -312,7 +314,7 @@ func (p projectsImpl) checkAccess(id string, auth middleware.Authentication) err
 		return errors.Wrap(err, "project access check unexpected failure")
 	}
 	if !isParticipant {
-		return apperrors.NotFound(fmt.Sprintf("cannot find project with id %d", id))
+		return apperrors.NotFound(fmt.Sprintf("cannot find project with id %s", id))
 	}
 	return nil
 }
@@ -334,6 +336,7 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 	}
 
 	// TODO sync secrets
+	log.Errorln("Secrets sync is not implemented!")
 
 	log.Debugf("Project %s checked, namespace exists or was created", projectId)
 	return nil

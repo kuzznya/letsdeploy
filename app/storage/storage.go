@@ -16,6 +16,8 @@ type QueryExecDB interface {
 	sqlx.QueryerContext
 	Select(dest interface{}, query string, args ...interface{}) error
 	Get(dest interface{}, query string, args ...interface{}) error
+	NamedExec(query string, args interface{}) (sql.Result, error)
+	NamedQuery(query string, args interface{}) (*sqlx.Rows, error)
 }
 
 type Storage struct {
@@ -45,6 +47,8 @@ func (s *Storage) EnvVarRepository() EnvVarRepository {
 func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 	var tx *sqlx.Tx
 
+	nestedTx := false
+
 	switch s.db.(type) {
 	case *sqlx.DB:
 		var err error
@@ -54,6 +58,7 @@ func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 		}
 	case *sqlx.Tx:
 		tx = s.db.(*sqlx.Tx)
+		nestedTx = true
 	}
 
 	err := f(&Storage{db: tx})
@@ -62,6 +67,10 @@ func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 			log.Panicln(fmt.Errorf("cannot rollback transaction: %w", err))
 		}
 		return err
+	}
+	// do not commit tx to let parent tx decide whether to commit
+	if nestedTx {
+		return nil
 	}
 	if err := tx.Commit(); err != nil {
 		return errors.Wrap(err, "cannot commit transaction")

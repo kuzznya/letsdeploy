@@ -14,10 +14,10 @@ type promiseImpl[T any] struct {
 }
 
 func New[T any]() Promise[T] {
-	return promiseImpl[T]{m: &sync.Mutex{}, value: nil, subscribers: make([]func(T), 0)}
+	return &promiseImpl[T]{m: &sync.Mutex{}, value: nil, subscribers: make([]func(T), 0)}
 }
 
-func (p promiseImpl[T]) Resolve(value T) {
+func (p *promiseImpl[T]) Resolve(value T) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.value = &value
@@ -33,7 +33,7 @@ func (p promiseImpl[T]) Resolve(value T) {
 	wg.Wait()
 }
 
-func (p promiseImpl[T]) OnProvided(f func(T)) {
+func (p *promiseImpl[T]) OnProvided(f func(T)) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	if p.value != nil {

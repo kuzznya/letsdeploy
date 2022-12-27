@@ -80,7 +80,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
     get:
       operationId: GetProject
       tags:
@@ -122,7 +122,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
     get:
       operationId: GetProjectParticipants
       tags:
@@ -151,7 +151,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
       - name: username
         in: path
         required: true
@@ -198,7 +198,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
     get:
       operationId: GetSecrets
       tags:
@@ -260,7 +260,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
       - name: name
         in: path
         required: true
@@ -555,7 +555,7 @@ components:
       properties:
         id:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
       required:
         - id
 
@@ -590,12 +590,10 @@ components:
           readOnly: true
         project:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
         name:
           type: string
-          minLength: 1
-          maxLength: 255
-          pattern: ^[a-zA-Z0-9]+$
+          pattern: ^[a-z0-9_-]{1,20}$
         image:
           type: string
           minLength: 1
@@ -607,11 +605,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EnvVar'
+            default: []
       required:
+        - id
         - project
         - name
         - image
         - port
+        - envVars
 
     ManagedService:
       type: object
@@ -621,10 +622,10 @@ components:
           readOnly: true
         project:
           type: string
-          pattern: ^[a-zA-Z0-9_-]{3,100}$
+          pattern: ^[a-z0-9_-]{4,20}$
         name:
           type: string
-          minLength: 1
+          pattern: ^[a-z0-9_-]{1,20}$
         type:
           type: string
           enum:
@@ -633,6 +634,7 @@ components:
             - rabbitmq
             - redis
       required:
+        - id
         - project
         - name
         - type

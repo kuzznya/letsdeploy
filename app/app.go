@@ -143,6 +143,10 @@ func openApiValidatorMiddleware(includePaths ...string) gin.HandlerFunc {
 		Options: openapi3filter.Options{
 			AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
 		},
+		ErrorHandler: func(c *gin.Context, message string, statusCode int) {
+			log.Infof("Bad request: %s", message)
+			c.AbortWithStatusJSON(statusCode, gin.H{"error": message})
+		},
 	}
 	validator := oapiMiddleware.OapiRequestValidatorWithOptions(apiDocs, &options)
 	if err != nil {

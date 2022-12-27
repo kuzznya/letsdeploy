@@ -18,9 +18,9 @@ type SecretEntity struct {
 type SecretRepository interface {
 	FindByProjectId(id string) ([]SecretEntity, error)
 	CreateNew(secret SecretEntity) error
-	ExistsByName(name string) (bool, error)
-	FindByName(name string) (*SecretEntity, error)
-	DeleteByName(name string) error
+	ExistsByProjectIdAndName(id string, name string) (bool, error)
+	FindByProjectIdAndName(id string, name string) (*SecretEntity, error)
+	DeleteByProjectIdAndName(id string, name string) error
 }
 
 type secretRepositoryImpl struct {
@@ -46,28 +46,28 @@ func (s secretRepositoryImpl) CreateNew(secret SecretEntity) error {
 	return nil
 }
 
-func (s secretRepositoryImpl) ExistsByName(name string) (bool, error) {
+func (s secretRepositoryImpl) ExistsByProjectIdAndName(id string, name string) (bool, error) {
 	var exists bool
-	err := s.db.Get(&exists, "SELECT exists(SELECT * FROM secret WHERE name = $1)", name)
+	err := s.db.Get(&exists, "SELECT exists(SELECT * FROM secret WHERE project_id = $1 AND name = $2)", id, name)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get secret by name")
 	}
 	return exists, nil
 }
 
-func (s secretRepositoryImpl) FindByName(name string) (*SecretEntity, error) {
+func (s secretRepositoryImpl) FindByProjectIdAndName(id string, name string) (*SecretEntity, error) {
 	var secret SecretEntity
-	err := s.db.Get(&secret, "SELECT * FROM secret WHERE name = $1", name)
+	err := s.db.Get(&secret, "SELECT * FROM secret WHERE project_id = $1 AND name = $2", id, name)
 	if err == sql.ErrNoRows {
-		return nil, apperrors.NotFound(fmt.Sprintf("Secret with name %s not found", name))
+		return nil, apperrors.NotFound(fmt.Sprintf("SecretId with name %s not found", name))
 	} else if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret by name")
 	}
 	return &secret, nil
 }
 
-func (s secretRepositoryImpl) DeleteByName(name string) error {
-	_, err := s.db.Exec("DELETE FROM secret WHERE name = $1", name)
+func (s secretRepositoryImpl) DeleteByProjectIdAndName(id string, name string) error {
+	_, err := s.db.Exec("DELETE FROM secret WHERE project_id = $1 AND name = $2", id, name)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete secret")
 	}

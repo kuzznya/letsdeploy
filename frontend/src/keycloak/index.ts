@@ -1,5 +1,5 @@
-import {KeycloakInstance} from "@dsb-norge/vue-keycloak-js/dist/types";
 import {inject, InjectionKey} from "vue";
+import {KeycloakInstance} from "@dsb-norge/vue-keycloak-js/dist/types";
 
 export const keycloakKey: InjectionKey<KeycloakInstance> = Symbol('keycloak')
 
