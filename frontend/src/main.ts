@@ -27,7 +27,8 @@ const kcOptions: VueKeycloakOptions = {
     clientId: 'letsdeploy-frontend'
   },
   init: {
-    onLoad: 'check-sso'
+    onLoad: 'check-sso',
+    silentCheckSsoRedirectUri: window.location.origin + "/silent-check-sso.html"
   },
   onReady: keycloak => {
     patchKeycloakInstance(keycloak)
