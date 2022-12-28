@@ -322,7 +322,7 @@ func (m managedServicesImpl) createRedisDeployment(ctx context.Context, service 
 		WithLabels(map[string]string{"app": service.Name}).
 		WithSpec(applyConfigsCoreV1.PodSpec().WithContainers(container).WithTerminationGracePeriodSeconds(10))
 
-	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("redis-data", service.Project).
+	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
 			WithResources(applyConfigsCoreV1.ResourceRequirements().
