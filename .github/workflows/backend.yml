@@ -1,0 +1,36 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate code
+        run: go generate github.com/kuzznya/letsdeploy/...
+      - name: Run tests
+        run: go test github.com/kuzznya/letsdeploy/...
+      - name: Build image
+        run: docker build -t ghcr.io/kuzznya/letsdeploy/backend:latest .
+      - name: Login with docker
+        run: >
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login --username kuzznya
+          --password-stdin ghcr.io/kuzznya
+      - name: Publish container
+        run: docker push ghcr.io/kuzznya/letsdeploy/backend:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare .kube directory
+        run: mkdir ~/.kube || echo "Cannot create ~/.kube directory, skipping"
+      - name: Prepare kubeconfig
+        run: echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+      - name: Deploy to Kubernetes
+        run: kubectl rollout restart deployment backend --namespace letsdeploy

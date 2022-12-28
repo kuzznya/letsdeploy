@@ -1,6 +1,6 @@
 @import './base.css';
 
 .b-card-clickable:hover {
-    filter: brightness(0.9);
+    filter: brightness(1.1);
     cursor: pointer;
 }

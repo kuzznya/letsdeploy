@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import {ref} from "vue";
-import api from "@/api";
+import {onUnmounted, ref} from "vue";
 import {useRouter} from "vue-router";
+import api from "@/api";
 import {EnvVar} from "@/api/generated";
 import {useDarkMode} from "@/dark-mode";
 import ErrorModal from "@/components/ErrorModal.vue";
@@ -36,9 +36,18 @@ const createInitiated = ref(false)
 
 const error = ref<Error | string | null>(null)
 
-async function secrets() {
-  return await api.ProjectApi.getSecrets(props.project).then(r => r.data).then(secrets => secrets.map(s => s.name))
+const secrets = ref<string[]>([])
+
+loadSecrets().catch(e => console.log("Failed to load secrets", e))
+
+async function loadSecrets() {
+  api.ProjectApi.getSecrets(props.project).then(r => r.data)
+    .then(secrets => secrets.map(s => s.name))
+    .then(s => secrets.value = s)
 }
+
+const secretsRefresher = setInterval(() => loadSecrets().catch(e => console.log("Failed to load secrets", e)), 10000)
+onUnmounted(() => clearInterval(secretsRefresher))
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement
@@ -101,6 +110,7 @@ async function createService() {
   try {
     createInitiated.value = true
     await api.ServiceApi.createService({
+      id: undefined as unknown as number,
       name: name.value,
       project: props.project,
       image: image.value,
@@ -121,9 +131,14 @@ async function createService() {
 
 <template>
   <b-container>
-    <h1 class="font-monospace text-center">{{ props.project }}</h1>
-
-    <h2>New service</h2>
+    <h2 class="font-monospace text-center mb-3">
+      <b-link :to="{ name: 'project', params: { id: project } }"
+              :class="darkModeEnabled ? 'link-light' : 'link-dark'">
+        {{ project }}
+      </b-link>
+      <i class="bi bi-chevron-right mx-3"/>
+      <span>{{name.length > 0 ? name : 'new service'}}</span>
+    </h2>
 
     <label class="mt-3" for="name-input">Name:</label>
     <b-form-input id="name-input" v-model="name" :formatter="formatName" :state="name.length >= 3"/>
@@ -181,7 +196,7 @@ async function createService() {
         />
         <b-form-select v-else-if="newEnvVar.type === 'secret'"
                        v-model="newEnvVar.secret"
-                       :options="secrets()"
+                       :options="secrets"
                        :state="newEnvVar.secret != null && newEnvVar.secret.length > 0"
                        class="d-inline w-auto" size="sm"
         />

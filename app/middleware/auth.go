@@ -9,11 +9,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/internal/openapi"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"math/big"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const authContextKey = "authentication"
@@ -48,9 +50,7 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	}
 	tokenString := headerValue[7:]
 
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return rsaKeys[t.Header["kid"].(string)], nil
-	})
+	token, err := parseToken(tokenString, rsaKeys)
 	if err != nil {
 		log.WithError(err).Errorln("Failed to parse JWT")
 		ctx.Error(apperrors.Forbidden("Failed to authenticate user"))
@@ -69,6 +69,24 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	log.Debugf("User %s authenticated\n", username)
 
 	ctx.Next()
+}
+
+// parseToken parses token and allows clock skew
+func parseToken(tokenStr string, rsaKeys map[string]*rsa.PublicKey) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return rsaKeys[t.Header["kid"].(string)], nil
+	})
+	if ve, ok := err.(*jwt.ValidationError); ok && ve.Errors == jwt.ValidationErrorIssuedAt {
+		delta := int(token.Claims.(jwt.MapClaims)["iat"].(float64) - float64(time.Now().Unix()))
+		if delta < 3 {
+			log.Warnf("Encountered lock skew %ds, skipping", delta)
+			token.Valid = true
+			return token, nil
+		} else {
+			return nil, errors.Wrapf(err, "time diff is %ds that is more than allowed", delta)
+		}
+	}
+	return token, err
 }
 
 func GetAuth(ctx context.Context) Authentication {

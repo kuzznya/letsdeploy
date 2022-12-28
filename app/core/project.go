@@ -33,6 +33,7 @@ type Projects interface {
 	GetParticipants(id string, auth middleware.Authentication) ([]string, error)
 	AddParticipant(id string, username string, auth middleware.Authentication) error
 	RemoveParticipant(id string, username string, auth middleware.Authentication) error
+	JoinProject(ctx context.Context, code string, auth middleware.Authentication) (*openapi.Project, error)
 	GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error)
 	CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error)
 	DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error
@@ -144,6 +145,7 @@ func (p projectsImpl) GetProjectInfo(id string, auth middleware.Authentication) 
 
 	return &openapi.ProjectInfo{
 		Id:              record.Id,
+		InviteCode:      record.InviteCode,
 		Participants:    participants,
 		Services:        services,
 		ManagedServices: managedServices,
@@ -227,6 +229,23 @@ func (p projectsImpl) RemoveParticipant(id string, username string, auth middlew
 		return errors.Wrap(err, "failed to add participant")
 	}
 	return nil
+}
+
+func (p projectsImpl) JoinProject(ctx context.Context, code string, auth middleware.Authentication) (*openapi.Project, error) {
+	entity, err := p.storage.ProjectRepository().FindByInviteCode(code)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find project by invite code")
+	}
+	err = p.storage.ExecTx(ctx, func(s *storage.Storage) error {
+		if err := s.ProjectRepository().AddParticipant(entity.Id, auth.Username); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to add participant")
+	}
+	return &openapi.Project{Id: entity.Id}, nil
 }
 
 func (p projectsImpl) GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error) {

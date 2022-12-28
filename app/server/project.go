@@ -63,6 +63,14 @@ func (s Server) AddProjectParticipant(ctx context.Context, request openapi.AddPr
 	return openapi.AddProjectParticipant200Response{}, nil
 }
 
+func (s Server) JoinProject(ctx context.Context, request openapi.JoinProjectRequestObject) (openapi.JoinProjectResponseObject, error) {
+	project, err := s.core.Projects.JoinProject(ctx, request.InviteCode, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to join project")
+	}
+	return openapi.JoinProject200JSONResponse(*project), nil
+}
+
 func (s Server) GetSecrets(ctx context.Context, request openapi.GetSecretsRequestObject) (openapi.GetSecretsResponseObject, error) {
 	secrets, err := s.core.Projects.GetSecrets(request.Id, middleware.GetAuth(ctx))
 	if err != nil {

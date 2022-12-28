@@ -13,5 +13,22 @@ services:
       - pg_data:/var/lib/postgresql/data
     restart: always
 
+  kubectl:
+    image: bitnami/kubectl
+    container_name: kubectl_proxy
+    command: proxy --server https://minikube:8443 --address 0.0.0.0 --port 8001 --client-key /client.key --client-certificate /client.crt --insecure-skip-tls-verify
+    ports:
+      - 8001:8001
+    restart: always
+    volumes:
+      - ~/.minikube/profiles/minikube/client.crt:/client.crt
+      - ~/.minikube/profiles/minikube/client.key:/client.key
+    networks:
+      - minikube
+
 volumes:
   pg_data:
+
+networks:
+  minikube:
+    external: true

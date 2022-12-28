@@ -1,0 +1,7 @@
+.git
+.github
+frontend
+docs
+internal/openapi/*.gen.go
+docker-compose.yml
+Dockerfile

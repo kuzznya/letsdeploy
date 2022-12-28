@@ -1,0 +1,3 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+ALTER TABLE project ADD COLUMN IF NOT EXISTS invite_code uuid NOT NULL UNIQUE DEFAULT uuid_generate_v4();

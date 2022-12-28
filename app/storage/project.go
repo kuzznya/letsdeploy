@@ -7,7 +7,8 @@ import (
 )
 
 type ProjectEntity struct {
-	Id string `db:"id"`
+	Id         string `db:"id"`
+	InviteCode string `db:"invite_code"`
 }
 
 type ProjectRepository interface {
@@ -18,6 +19,7 @@ type ProjectRepository interface {
 	IsParticipant(id string, username string) (bool, error)
 	AddParticipant(id string, username string) error
 	RemoveParticipant(id string, username string) error
+	FindByInviteCode(code string) (*ProjectEntity, error)
 }
 
 type projectRepositoryImpl struct {
@@ -93,7 +95,7 @@ func (r *projectRepositoryImpl) GetParticipants(id string) ([]string, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.Errorf("project with id %d does not exist", id)
+		return nil, errors.Errorf("project with id %s does not exist", id)
 	}
 	participants := []string{}
 	err = r.db.Select(&participants, "SELECT username FROM project_participant WHERE project_id = $1", id)
@@ -131,9 +133,12 @@ func (r *projectRepositoryImpl) AddParticipant(id string, username string) error
 		return err
 	}
 	if !exists {
-		return errors.Errorf("project with id %d does not exist", id)
+		return errors.Errorf("project with id %s does not exist", id)
 	}
-	_, err = r.db.Exec("INSERT INTO project_participant (project_id, username) VALUES ($1, $2)", id, username)
+	_, err = r.db.Exec(`
+INSERT INTO project_participant (project_id, username) 
+VALUES ($1, $2) 
+ON CONFLICT (project_id, username) DO NOTHING`, id, username)
 	if err != nil {
 		return errors.Wrap(err, "failed to add new participant")
 	}
@@ -146,11 +151,22 @@ func (r *projectRepositoryImpl) RemoveParticipant(id string, username string) er
 		return err
 	}
 	if !exists {
-		return errors.Errorf("project with id %d does not exist", id)
+		return errors.Errorf("project with id %s does not exist", id)
 	}
 	_, err = r.db.Exec("DELETE FROM project_participant WHERE project_id = $1 AND username = $2", id, username)
 	if err != nil {
 		return errors.Wrap(err, "failed to remove participant")
 	}
 	return nil
+}
+
+func (r *projectRepositoryImpl) FindByInviteCode(code string) (*ProjectEntity, error) {
+	var project ProjectEntity
+	err := r.db.Get(&project, "SELECT * FROM project WHERE invite_code = $1::uuid", code)
+	if err == sql.ErrNoRows {
+		return nil, apperrors.NotFound("Project with this invite code not found")
+	} else if err != nil {
+		return nil, errors.Wrap(err, "failed to retrieve project by invite code")
+	}
+	return &project, nil
 }

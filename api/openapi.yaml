@@ -190,6 +190,32 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/projects/invitations/{invite_code}:
+    parameters:
+      - name: invite_code
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: JoinProject
+      tags:
+        - project
+      summary: Join project by invitation code
+      responses:
+        200:
+          description: Project the user was invited to
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Project with this invite code not found
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
 
   /api/v1/projects/{id}/secrets:
     parameters:
@@ -266,7 +292,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+          pattern: ^[a-zA-Z0-9_-]{1,255}$
     delete:
       operationId: DeleteSecret
       tags:
@@ -565,6 +591,8 @@ components:
         - $ref: '#/components/schemas/Project'
         - type: object
           properties:
+            inviteCode:
+              type: string
             participants:
               type: array
               items:
@@ -578,6 +606,7 @@ components:
               items:
                 $ref: '#/components/schemas/ManagedService'
           required:
+            - inviteCode
             - participants
             - services
             - managedServices
@@ -645,7 +674,7 @@ components:
           properties:
             name:
               type: string
-              pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+              pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]{0,254}$
           required:
             - name
         - oneOf:
@@ -660,7 +689,7 @@ components:
               properties:
                 secret:
                   type: string
-                  pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+                  pattern: ^[a-zA-Z0-9_-]{1,255}$
               required:
                 - secret
 
@@ -669,7 +698,7 @@ components:
       properties:
         name:
           type: string
-          pattern: ^[a-zA-Z_]+[a-zA-Z0-9_]*$
+          pattern: ^[a-zA-Z0-9_-]{1,255}$
         managedServiceId:
           type: integer
           readOnly: true

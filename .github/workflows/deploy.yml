@@ -1,0 +1,22 @@
+name: Manual deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare .kube directory
+        run: mkdir ~/.kube || echo "Cannot create ~/.kube directory, skipping"
+      - name: Prepare kubeconfig
+        run: echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+      - name: Prepare .env file
+        run : echo "${{ secrets.ENV }}" > deploy/.env
+      - name: Create namespace
+        run: kubectl create namespace letsdeploy
+      - name: Create secrets
+        run: ./create-secrets.sh
+        working-directory: deploy
+      - name: Deploy project
+        run: kubectl --namespace letsdeploy apply -f deploy/configs

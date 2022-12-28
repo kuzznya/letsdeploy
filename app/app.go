@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	oapiMiddleware "github.com/deepmap/oapi-codegen/pkg/gin-middleware"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -142,6 +143,10 @@ func openApiValidatorMiddleware(includePaths ...string) gin.HandlerFunc {
 	options := oapiMiddleware.Options{
 		Options: openapi3filter.Options{
 			AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
+			MultiError:         true,
+		},
+		MultiErrorHandler: func(me openapi3.MultiError) error {
+			return me
 		},
 		ErrorHandler: func(c *gin.Context, message string, statusCode int) {
 			log.Infof("Bad request: %s", message)

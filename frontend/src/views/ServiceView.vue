@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import {computed, onUnmounted, ref} from "vue";
 import api from "@/api";
-import {useDarkMode} from "@/dark-mode";
-import {computed, ref} from "vue";
-import ErrorModal from "@/components/ErrorModal.vue";
 import {EnvVar, Service} from "@/api/generated";
+import {useDarkMode} from "@/dark-mode";
+import ErrorModal from "@/components/ErrorModal.vue";
 
 const darkMode = useDarkMode()
 
@@ -51,12 +51,22 @@ const newEnvVar = ref<TypedEnvVar>({
 
 const error = ref<Error | string | null>(null)
 
-async function secrets() {
-  return await api.ProjectApi.getSecrets(service.value.project).then(r => r.data).then(secrets => secrets.map(s => s.name))
+const secrets = ref<string[]>([])
+
+loadSecrets().catch(e => console.log("Failed to load secrets", e))
+
+async function loadSecrets() {
+  api.ProjectApi.getSecrets(service.value.project).then(r => r.data)
+    .then(secrets => secrets.map(s => s.name))
+    .then(s => secrets.value = s)
 }
+
+const secretsRefresher = setInterval(() => loadSecrets().catch(e => console.log("Failed to load secrets", e)), 10000)
+onUnmounted(() => clearInterval(secretsRefresher))
 
 async function updateService(change: (s: Service) => void) {
   const s = copy(service.value)
+  // @ts-ignore
   s.id = undefined
   change(s)
   service.value = await api.ServiceApi.updateService(props.id, s).then(r => r.data)
@@ -166,8 +176,8 @@ const areEnvVarsEdited = computed(() =>
               :class="darkModeEnabled ? 'link-light' : 'link-dark'">
         {{ service.project }}
       </b-link>
-      <i class="bi bi-chevron-right"/>
-      {{ service.name }}
+      <i class="bi bi-chevron-right mx-3"/>
+      <span>{{ service.name }}</span>
     </h2>
 
     <b-row class="fs-5">
@@ -315,7 +325,7 @@ const areEnvVarsEdited = computed(() =>
         />
         <b-form-select v-else-if="newEnvVar.type === 'secret'"
                        v-model="newEnvVar.secret"
-                       :options="secrets()"
+                       :options="secrets"
                        size="sm"
                        :state="newEnvVar.secret != null && newEnvVar.secret.length > 0" class="d-inline w-auto"
         />
@@ -330,8 +340,6 @@ const areEnvVarsEdited = computed(() =>
         </b-button>
       </b-col>
     </b-row>
-
-    <!-- TODO create alert card if env vars were not uploaded -->
 
     <error-modal v-model="error"/>
   </b-container>

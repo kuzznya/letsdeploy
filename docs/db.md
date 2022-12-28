@@ -10,6 +10,7 @@ skinparam linetype ortho
 
 entity project {
   id
+  invite_code
 }
 
 entity project_participant {
@@ -49,7 +50,7 @@ entity secret {
   managed_service_id <<FK managed_service(id)>>
 }
 
-project }o.left.o{ project_participant
+project }o.up.o{ project_participant
 project ||..o{ service
 project ||..o{ managed_service
 service ||..o{ env_var
