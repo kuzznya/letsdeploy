@@ -90,13 +90,17 @@ spec:
               value: "8080"
             - name: POSTGRES_HOST
               value: postgres:5432
-            - name: DB_USERNAME
+            - name: POSTGRES_DATABASE
               value: postgres
-            - name: DB_PASSWORD
+            - name: POSTGRES_USERNAME
+              value: postgres
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: letsdeploy-secrets
-                  key: DB_PASSWORD
+                  key: POSTGRES_PASSWORD
+            - name: KUBERNETES_IN_CLUSTER
+              value: "true"
           livenessProbe:
             httpGet:
               port: 8080
