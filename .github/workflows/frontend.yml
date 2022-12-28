@@ -20,7 +20,7 @@ jobs:
         working-directory: frontend
       - name: Build container
         run: docker build -t ghcr.io/kuzznya/letsdeploy/frontend:latest .
-        working-directory: frontend-admin
+        working-directory: frontend
       - name: Login with docker
         run: >
           echo ${{ secrets.GITHUB_TOKEN }} | docker login --username kuzznya
