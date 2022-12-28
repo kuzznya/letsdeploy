@@ -150,20 +150,33 @@ func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context,
 	}
 	err = m.createPasswordSecret(ctx, store, service)
 	if err != nil {
+		if err := m.deleteK8sService(ctx, service.Project, service.Name); err != nil {
+			log.WithError(err).Errorln("Failed to delete K8s service after password secret creation failure")
+		}
 		return errors.Wrap(err, "failed to create secret for managed service")
 	}
 	switch service.Type {
 	case openapi.Postgres:
-		return m.createPostgresDeployment(ctx, service)
+		err = m.createPostgresDeployment(ctx, service)
 	case openapi.Mysql:
-		return m.createMySqlDeployment(ctx, service)
+		err = m.createMySqlDeployment(ctx, service)
 	case openapi.Redis:
-		return m.createRedisDeployment(ctx, service)
+		err = m.createRedisDeployment(ctx, service)
 	case openapi.Rabbitmq:
-		return m.createRabbitMQDeployment(ctx, service)
+		err = m.createRabbitMQDeployment(ctx, service)
 	default:
 		return errors.Errorf("Unknown managed service type %s", service.Type)
 	}
+	if err != nil {
+		if err := m.deletePasswordSecret(ctx, service.Project, service.Name); err != nil {
+			log.WithError(err).Errorln("Failed to delete password secret after managed service deployment failure")
+		}
+		if err := m.deleteK8sService(ctx, service.Project, service.Name); err != nil {
+			log.WithError(err).Errorln("Failed to delete K8s service after managed service deployment failure")
+		}
+		return err
+	}
+	return nil
 }
 
 func (m managedServicesImpl) createK8sService(ctx context.Context, service openapi.ManagedService) error {
@@ -171,6 +184,7 @@ func (m managedServicesImpl) createK8sService(ctx context.Context, service opena
 		WithPort(80).
 		WithTargetPort(intstr.FromInt(managedServices[service.Type].podPort))
 	serviceConfig := applyConfigsCoreV1.Service(service.Name, service.Project).
+		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
 		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port))
 	_, err := m.clientset.CoreV1().Services(service.Project).Apply(ctx, serviceConfig, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
@@ -411,6 +425,30 @@ func (m managedServicesImpl) deleteManagedServiceDeployment(ctx context.Context,
 	err := m.clientset.AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to delete managed service StatefulSet")
+	}
+	err = m.deletePasswordSecret(ctx, namespace, name)
+	if err != nil {
+		log.WithError(err).Errorln("Failed to delete secret of managed service, skipping")
+	}
+	err = m.deleteK8sService(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m managedServicesImpl) deleteK8sService(ctx context.Context, namespace string, name string) error {
+	err := m.clientset.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to delete K8s service for managed service")
+	}
+	return nil
+}
+
+func (m managedServicesImpl) deletePasswordSecret(ctx context.Context, namespace string, name string) error {
+	err := m.clientset.CoreV1().Secrets(namespace).Delete(ctx, name+"-password", metav1.DeleteOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to delete secret for managed service")
 	}
 	return nil
 }

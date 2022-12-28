@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	applyConfigsAppsV1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applyConfigsCoreV1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applyConfigsMetaV1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -342,6 +343,10 @@ func (s servicesImpl) DeleteServiceEnvVar(serviceId int, envVarName string, auth
 }
 
 func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openapi.Service) error {
+	if err := s.createK8sServiceForService(ctx, service); err != nil {
+		return err
+	}
+
 	limits := v1.ResourceList{}
 	limits.Cpu().SetMilli(250)
 	limits.Memory().SetScaled(512, resource.Mega)
@@ -378,7 +383,24 @@ func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openap
 	_, err := s.clientset.AppsV1().Deployments(service.Project).
 		Apply(ctx, deployment, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
+		if err := s.deleteK8sServiceForService(ctx, service.Project, service.Name); err != nil {
+			log.WithError(err).Errorln("Failed to delete K8s service after deployment failure, skipping")
+		}
 		return errors.Wrap(err, "failed to create service deployment")
+	}
+	return nil
+}
+
+func (s servicesImpl) createK8sServiceForService(ctx context.Context, service openapi.Service) error {
+	port := applyConfigsCoreV1.ServicePort().
+		WithPort(80).
+		WithTargetPort(intstr.FromInt(service.Port))
+	svc := applyConfigsCoreV1.Service(service.Name, service.Project).
+		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
+		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port))
+	_, err := s.clientset.CoreV1().Services(service.Project).Apply(ctx, svc, metav1.ApplyOptions{FieldManager: "letsdeploy"})
+	if err != nil {
+		return errors.Wrap(err, "failed to create K8s service for user service")
 	}
 	return nil
 }
@@ -387,6 +409,18 @@ func (s servicesImpl) deleteServiceDeployment(ctx context.Context, project strin
 	err := s.clientset.AppsV1().Deployments(project).Delete(ctx, service, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service deployment")
+	}
+	err = s.deleteK8sServiceForService(ctx, project, service)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s servicesImpl) deleteK8sServiceForService(ctx context.Context, project string, service string) error {
+	err := s.clientset.CoreV1().Services(project).Delete(ctx, service, metav1.DeleteOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to delete K8s service for user service")
 	}
 	return nil
 }

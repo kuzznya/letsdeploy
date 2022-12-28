@@ -46,7 +46,7 @@ func sync(core *Core) chrono.Task {
 			}
 		}
 
-		core.Projects.(*projectsImpl).removeExcessNamespaces(ctx, checkedProjects) // TODO 09.11.22 refactor
+		core.Projects.(*projectsImpl).removeExcessNamespaces(ctx, checkedProjects) // TODO: 09.11.22 refactor
 
 		log.Infoln("Kubernetes sync finished")
 	}
