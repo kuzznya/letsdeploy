@@ -114,7 +114,7 @@ async function createService() {
       name: name.value,
       project: props.project,
       image: image.value,
-      port: port.value,
+      port: Number.parseInt(port.value as unknown as string),
       // @ts-ignore
       envVars: envVars.value.map(e => e.type == 'value' ?
         {name: e.name, value: e.value} :

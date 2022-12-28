@@ -98,9 +98,11 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 			return varEntity
 		})
 
-		_, err = store.EnvVarRepository().CreateOrUpdateAll(envVars)
-		if err != nil {
-			return err
+		if len(envVars) > 0 {
+			_, err = store.EnvVarRepository().CreateOrUpdateAll(envVars)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = s.applyServiceDeployment(ctx, service)
