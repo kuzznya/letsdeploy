@@ -250,7 +250,7 @@ func (m managedServicesImpl) createPostgresDeployment(ctx context.Context, servi
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
 			WithResources(applyConfigsCoreV1.ResourceRequirements().
-				WithRequests(v1.ResourceList{v1.ResourceMemory: resource.MustParse("1Gi")})))
+				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
 		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
@@ -289,7 +289,7 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
 			WithResources(applyConfigsCoreV1.ResourceRequirements().
-				WithRequests(v1.ResourceList{v1.ResourceMemory: resource.MustParse("1Gi")})))
+				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
 		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
@@ -326,7 +326,7 @@ func (m managedServicesImpl) createRedisDeployment(ctx context.Context, service 
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
 			WithResources(applyConfigsCoreV1.ResourceRequirements().
-				WithRequests(v1.ResourceList{v1.ResourceMemory: resource.MustParse("500Mi")})))
+				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("500Mi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
 		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
