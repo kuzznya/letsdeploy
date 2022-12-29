@@ -663,6 +663,7 @@ components:
           enum:
             - postgres
             - mysql
+            - mongo
             - rabbitmq
             - redis
       required:
