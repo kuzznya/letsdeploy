@@ -67,8 +67,9 @@ func (m managedServicesImpl) GetProjectManagedServices(project string, auth midd
 	}
 	services := make([]openapi.ManagedService, len(entities))
 	for i, entity := range entities {
+		id := entity.Id
 		services[i] = openapi.ManagedService{
-			Id:      &entity.Id,
+			Id:      &id,
 			Name:    entity.Name,
 			Project: entity.ProjectId,
 			Type:    openapi.ManagedServiceType(entity.Type),

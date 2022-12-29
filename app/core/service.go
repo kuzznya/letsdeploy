@@ -63,8 +63,9 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 	}
 	services := make([]openapi.Service, len(entities))
 	for i, entity := range entities {
+		id := entity.Id
 		services[i] = openapi.Service{
-			Id:              &entity.Id,
+			Id:              &id,
 			Image:           entity.Image,
 			Name:            entity.Name,
 			Port:            entity.Port,
