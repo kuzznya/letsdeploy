@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -427,7 +428,7 @@ func (m managedServicesImpl) deleteManagedServiceDeployment(ctx context.Context,
 		return errors.Wrap(err, "failed to delete managed service StatefulSet")
 	}
 	err = m.deletePasswordSecret(ctx, namespace, name)
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		log.WithError(err).Errorln("Failed to delete secret of managed service, skipping")
 	}
 	err = m.deleteK8sService(ctx, namespace, name)
@@ -439,7 +440,7 @@ func (m managedServicesImpl) deleteManagedServiceDeployment(ctx context.Context,
 
 func (m managedServicesImpl) deleteK8sService(ctx context.Context, namespace string, name string) error {
 	err := m.clientset.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete K8s service for managed service")
 	}
 	return nil
@@ -447,7 +448,7 @@ func (m managedServicesImpl) deleteK8sService(ctx context.Context, namespace str
 
 func (m managedServicesImpl) deletePasswordSecret(ctx context.Context, namespace string, name string) error {
 	err := m.clientset.CoreV1().Secrets(namespace).Delete(ctx, name+"-password", metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete secret for managed service")
 	}
 	return nil

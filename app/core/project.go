@@ -318,7 +318,7 @@ func (p projectsImpl) DeleteSecret(ctx context.Context, projectId string, name s
 		return errors.Wrap(err, "failed to delete secret")
 	}
 	err = p.clientset.CoreV1().Secrets(projectId).Delete(ctx, strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		log.WithError(err).Warnln("Failed to delete secret from Kubernetes")
 	}
 	return nil
@@ -373,7 +373,7 @@ func (p projectsImpl) removeExcessNamespaces(ctx context.Context, checkedProject
 		}
 		if checkedProjects[namespace.Name] == false {
 			err := p.clientset.CoreV1().Namespaces().Delete(ctx, namespace.Name, metav1.DeleteOptions{})
-			if err != nil {
+			if err != nil && !apierrors.IsNotFound(err) {
 				log.WithError(err).Errorln("Failed to delete namespace without project, skipping")
 				continue
 			}

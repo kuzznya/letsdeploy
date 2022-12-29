@@ -79,8 +79,9 @@ async function deleteService() {
   } catch (e) {
     error.value = e instanceof Error ? e : e as string
   } finally {
-    project.value = await api.ProjectApi.getProject(props.id).then(r => r.data)
     serviceToDelete.value = null
+    project.value = await api.ProjectApi.getProject(props.id).then(r => r.data)
+    secrets.value = await loadSecrets()
   }
 }
 
@@ -99,9 +100,7 @@ async function deleteSecret() {
   } catch (e) {
     error.value = e instanceof Error ? e : e as string
   } finally {
-    secrets.value = await api.ProjectApi.getSecrets(props.id).then(r => r.data)
-      .then(secrets => secrets.map(s => s.managedServiceId ?
-        { name: s.name, managedService: managedServicesMap[s.managedServiceId] } : { name: s.name, managedService: null }))
+    secrets.value = await loadSecrets()
   }
 }
 
@@ -155,7 +154,7 @@ function cancelSecretCreation() {
       Invite
     </b-button>
     <span v-else>
-      <div class="overflow-scroll text-nowrap d-inline-flex" style="max-width: 80%; white-space: nowrap;">
+      <div class="overflow-scroll text-nowrap d-inline-flex" style="max-width: 75%; white-space: nowrap;">
         <b-link class="ms-2 p-1 font-monospace rounded"
                 :class="darkModeEnabled ? 'bg-secondary text-light' : 'bg-light text-dark'"
         >
@@ -196,7 +195,7 @@ function cancelSecretCreation() {
               </b-col>
             </b-row>
 
-            <p>{{ service.image }}<br/>Port {{ service.port }}</p>
+            <p>{{ service.image }}<br/>Port {{ service.port }}<span class="ms-5">{{ service.publicApiPrefix ?? '' }}</span></p>
           </b-card>
         </b-col>
       </b-row>

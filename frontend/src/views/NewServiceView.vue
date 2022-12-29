@@ -24,6 +24,7 @@ interface TypedEnvVar extends EnvVar {
 const name = ref('')
 const image = ref('')
 const port = ref(8080)
+const publicApiPrefix = ref('')
 const envVars = ref<TypedEnvVar[]>([])
 const newEnvVar = ref<TypedEnvVar>({
   name: '',
@@ -51,7 +52,7 @@ onUnmounted(() => clearInterval(secretsRefresher))
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement
-  const formatted = /[a-z0-9_-]{1,20}/.exec(value)?.[0] ?? ''
+  const formatted = /^[a-z][-a-z0-9]{0,19}/.exec(value)?.[0] ?? ''
   input.value = formatted
   return formatted
 }
@@ -68,6 +69,13 @@ function formatPort(value: string, event: Event): string {
   const formatted = value.trim().length == 0 ? 1 : Math.max(1, Math.min(65535, Number.parseInt(value)))
   input.value = formatted.toString()
   return formatted.toString()
+}
+
+function formatApiPrefix(value: string, event: Event): string {
+  const input = event.target as HTMLInputElement
+  const formatted = /^(\/[A-Za-z0-9-_.]*)+/.exec(value)?.[0] ?? ''
+  input.value = formatted
+  return formatted
 }
 
 function formatEnvVarName(value: string, event: Event): string {
@@ -115,6 +123,7 @@ async function createService() {
       project: props.project,
       image: image.value,
       port: Number.parseInt(port.value as unknown as string),
+      publicApiPrefix: publicApiPrefix.value.length > 0 ? publicApiPrefix.value : undefined,
       // @ts-ignore
       envVars: envVars.value.map(e => e.type == 'value' ?
         {name: e.name, value: e.value} :
@@ -137,7 +146,7 @@ async function createService() {
         {{ project }}
       </b-link>
       <i class="bi bi-chevron-right mx-3"/>
-      <span>{{name.length > 0 ? name : 'new service'}}</span>
+      <span class="text-nowrap">{{name.length > 0 ? name : 'new service'}}</span>
     </h2>
 
     <label class="mt-3" for="name-input">Name:</label>
@@ -148,6 +157,10 @@ async function createService() {
 
     <label class="mt-3" for="port-input">Port:</label>
     <b-form-input id="port-input" v-model="port" :formatter="formatPort" max="65535" min="1" type="number"/>
+
+    <label class="mt-3" for="public-api-prefix">Public API prefix:</label>
+    <b-form-input id="public-api-prefix" v-model="publicApiPrefix" :formatter="formatApiPrefix"/>
+    <p v-if="publicApiPrefix.length === 0">No public access</p>
 
     <label class="mt-3">Environment variables:</label>
     <div v-for="envVar in envVars">
@@ -184,9 +197,10 @@ async function createService() {
                       style="max-width: 12rem;"
         />
         =
+        <span class="text-nowrap">
         <b-form-select v-model="newEnvVar.type"
                        :options="['value', 'secret']"
-                       class="d-inline w-auto me-2"
+                       class="d-inline w-auto me-2 my-1"
                        size="sm"
         />
         <b-form-input v-if="newEnvVar.type === 'value'"
@@ -200,6 +214,7 @@ async function createService() {
                        :state="newEnvVar.secret != null && newEnvVar.secret.length > 0"
                        class="d-inline w-auto" size="sm"
         />
+        </span>
 
         <b-button :disabled="!validateEnvVar(newEnvVar)"
                   class="d-inline ms-2"

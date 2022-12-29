@@ -21,7 +21,7 @@ const error = ref<Error | string | null>(null)
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement
-  const formatted = /[a-z0-9_-]{1,20}/.exec(value)?.[0] ?? ''
+  const formatted = /^[a-z][-a-z0-9]{0,19}$/.exec(value)?.[0] ?? ''
   input.value = formatted
   return formatted
 }
@@ -49,7 +49,7 @@ async function createManagedService() {
         {{ project }}
       </b-link>
       <i class="bi bi-chevron-right mx-3"/>
-      <span>{{name.length > 0 ? name : 'new service'}}</span>
+      <span class="text-nowrap">{{name.length > 0 ? name : 'new service'}}</span>
     </h2>
 
     <label class="mt-3" for="name-input">Name:</label>

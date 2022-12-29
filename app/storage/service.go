@@ -7,11 +7,12 @@ import (
 )
 
 type ServiceEntity struct {
-	Id        int    `db:"id"`
-	ProjectId string `db:"project_id"`
-	Name      string `db:"name"`
-	Image     string `db:"image"`
-	Port      int    `db:"port"`
+	Id              int            `db:"id"`
+	ProjectId       string         `db:"project_id"`
+	Name            string         `db:"name"`
+	Image           string         `db:"image"`
+	Port            int            `db:"port"`
+	PublicApiPrefix sql.NullString `db:"public_api_prefix"`
 }
 
 type ServiceRepository interface {
@@ -27,8 +28,9 @@ type serviceRepositoryImpl struct {
 
 func (r *serviceRepositoryImpl) CreateNew(service ServiceEntity) (int, error) {
 	var id int
-	err := r.db.Get(&id, "INSERT INTO service (project_id, name, image, port) VALUES ($1, $2, $3, $4) RETURNING id",
-		service.ProjectId, service.Name, service.Image, service.Port)
+	err := r.db.Get(&id,
+		"INSERT INTO service (project_id, name, image, port, public_api_prefix) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		service.ProjectId, service.Name, service.Image, service.Port, service.PublicApiPrefix)
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot save new service")
 	}
@@ -56,8 +58,8 @@ func (r *serviceRepositoryImpl) FindByID(id int) (*ServiceEntity, error) {
 }
 
 func (r *serviceRepositoryImpl) Update(service ServiceEntity) error {
-	_, err := r.db.Exec("UPDATE service SET name = $1, image = $2, port = $3 WHERE id = $4",
-		service.Name, service.Image, service.Port, service.Id)
+	_, err := r.db.Exec("UPDATE service SET name = $1, image = $2, port = $3, public_api_prefix = $4 WHERE id = $5",
+		service.Name, service.Image, service.Port, service.PublicApiPrefix, service.Id)
 	if err != nil {
 		return errors.Wrap(err, "failed to update service")
 	}

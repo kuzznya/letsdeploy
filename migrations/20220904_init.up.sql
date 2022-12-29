@@ -40,7 +40,7 @@ CREATE TABLE env_var (
     service_id int NOT NULL REFERENCES service(id) ON DELETE CASCADE,
     name text NOT NULL,
     value text,
-    secret_id int REFERENCES secret(id),
+    secret_id int REFERENCES secret(id) ON DELETE CASCADE,
     CHECK (value IS NOT NULL AND secret_id IS NULL OR secret_id IS NOT NULL AND value IS NULL),
     UNIQUE (service_id, name)
 );

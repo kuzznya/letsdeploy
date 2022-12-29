@@ -77,7 +77,7 @@ async function projectParticipants(id: string) {
 
 <template>
   <b-container>
-    <h2 class="mb-3 text-center">Your projects</h2>
+    <h2 class="font-monospace text-center mb-3">Your projects</h2>
 
     <b-button v-if="!newProjectInputEnabled"
               @click="newProjectInputEnabled = true"

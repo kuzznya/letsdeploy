@@ -57,7 +57,7 @@ func (s Server) SetServiceEnvVar(ctx context.Context, request openapi.SetService
 }
 
 func (s Server) DeleteServiceEnvVar(ctx context.Context, request openapi.DeleteServiceEnvVarRequestObject) (openapi.DeleteServiceEnvVarResponseObject, error) {
-	err := s.core.Services.DeleteServiceEnvVar(request.Id, request.Name, middleware.GetAuth(ctx))
+	err := s.core.Services.DeleteServiceEnvVar(ctx, request.Id, request.Name, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to delete service env var")
 	}
