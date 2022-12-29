@@ -426,8 +426,9 @@ func (s servicesImpl) createK8sService(ctx context.Context, service openapi.Serv
 		WithPort(80).
 		WithTargetPort(intstr.FromInt(service.Port))
 	svc := applyConfigsCoreV1.Service(service.Name, service.Project).
-		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
-		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port))
+		WithLabels(map[string]string{"letsdeploy.space/managed": "true", "app": service.Name}).
+		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port).
+			WithSelector(map[string]string{"app": service.Name}))
 	_, err := s.clientset.CoreV1().Services(service.Project).Apply(ctx, svc, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return errors.Wrap(err, "failed to create K8s service for user service")
