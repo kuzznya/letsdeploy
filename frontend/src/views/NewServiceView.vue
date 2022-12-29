@@ -198,22 +198,22 @@ async function createService() {
         />
         =
         <span class="text-nowrap">
-        <b-form-select v-model="newEnvVar.type"
-                       :options="['value', 'secret']"
-                       class="d-inline w-auto me-2 my-1"
-                       size="sm"
-        />
-        <b-form-input v-if="newEnvVar.type === 'value'"
-                      v-model="newEnvVar.value"
-                      class="d-inline w-auto"
-                      size="sm"
-        />
-        <b-form-select v-else-if="newEnvVar.type === 'secret'"
-                       v-model="newEnvVar.secret"
-                       :options="secrets"
-                       :state="newEnvVar.secret != null && newEnvVar.secret.length > 0"
-                       class="d-inline w-auto" size="sm"
-        />
+          <b-form-select v-model="newEnvVar.type"
+                         :options="['value', 'secret']"
+                         class="d-inline w-auto me-2 my-1"
+                         size="sm"
+          />
+          <b-form-input v-if="newEnvVar.type === 'value'"
+                        v-model="newEnvVar.value"
+                        class="d-inline w-auto"
+                        size="sm"
+          />
+          <b-form-select v-else-if="newEnvVar.type === 'secret'"
+                         v-model="newEnvVar.secret"
+                         :options="secrets"
+                         :state="newEnvVar.secret != null && newEnvVar.secret.length > 0"
+                         class="d-inline w-auto" size="sm"
+          />
         </span>
 
         <b-button :disabled="!validateEnvVar(newEnvVar)"

@@ -26,7 +26,7 @@ const secret = await api.ProjectApi.getSecrets(service.value.project).then(r => 
         {{ service.project }}
       </b-link>
       <i class="bi bi-chevron-right mx-3"/>
-      <span>{{ service.name }}</span>
+      <span class="text-nowrap">{{ service.name }}</span>
     </h2>
 
     <type-image :type="types[service.type]" :font-size="3"/>

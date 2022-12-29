@@ -177,7 +177,7 @@ const areEnvVarsEdited = computed(() =>
         {{ service.project }}
       </b-link>
       <i class="bi bi-chevron-right mx-3"/>
-      <span>{{ service.name }}</span>
+      <span class="text-nowrap">{{ service.name }}</span>
     </h2>
 
     <b-row class="fs-5">
@@ -313,22 +313,24 @@ const areEnvVarsEdited = computed(() =>
                       style="max-width: 12rem;"
         />
         =
-        <b-form-select v-model="newEnvVar.type"
-                       :options="['value', 'secret']"
-                       size="sm"
-                       class="d-inline w-auto me-2"
-        />
-        <b-form-input v-if="newEnvVar.type === 'value'"
-                      v-model="newEnvVar.value"
-                      size="sm"
-                      class="d-inline w-auto"
-        />
-        <b-form-select v-else-if="newEnvVar.type === 'secret'"
-                       v-model="newEnvVar.secret"
-                       :options="secrets"
-                       size="sm"
-                       :state="newEnvVar.secret != null && newEnvVar.secret.length > 0" class="d-inline w-auto"
-        />
+        <span class="text-nowrap">
+          <b-form-select v-model="newEnvVar.type"
+                         :options="['value', 'secret']"
+                         size="sm"
+                         class="d-inline w-auto me-2 my-1"
+          />
+          <b-form-input v-if="newEnvVar.type === 'value'"
+                        v-model="newEnvVar.value"
+                        size="sm"
+                        class="d-inline w-auto"
+          />
+          <b-form-select v-else-if="newEnvVar.type === 'secret'"
+                         v-model="newEnvVar.secret"
+                         :options="secrets"
+                         size="sm"
+                         :state="newEnvVar.secret != null && newEnvVar.secret.length > 0" class="d-inline w-auto"
+          />
+        </span>
 
         <b-button :disabled="!validateEnvVar(newEnvVar)"
                   @click="addEnvVar"
