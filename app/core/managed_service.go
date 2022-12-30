@@ -343,9 +343,6 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 		WithLabels(map[string]string{"app": service.Name}).
 		WithSpec(applyConfigsCoreV1.PodSpec().WithContainers(container).WithTerminationGracePeriodSeconds(10))
 
-	log.Print("Run Mongo")
-	log.Print(managedServices[service.Type].image)
-
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
