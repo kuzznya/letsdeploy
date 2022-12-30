@@ -29,6 +29,7 @@ type managedServiceParams struct {
 var managedServices = map[openapi.ManagedServiceType]managedServiceParams{
 	openapi.Postgres: {image: "postgres:14", username: "postgres", podPort: 5432},
 	openapi.Mysql:    {image: "mysql:8", username: "root", podPort: 3306},
+	openapi.Mongo:    {image: "mongo:5", username: "root", podPort: 27017},
 	openapi.Redis:    {image: "redis:7", username: "", podPort: 6379},
 	openapi.Rabbitmq: {image: "rabbitmq:3-management", username: "guest", podPort: 5672},
 }
@@ -162,6 +163,8 @@ func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context,
 		err = m.createPostgresDeployment(ctx, service)
 	case openapi.Mysql:
 		err = m.createMySqlDeployment(ctx, service)
+	case openapi.Mongo:
+		err = m.createMongoDeployment(ctx, service)
 	case openapi.Redis:
 		err = m.createRedisDeployment(ctx, service)
 	case openapi.Rabbitmq:
@@ -296,6 +299,45 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 			applyConfigsCoreV1.EnvVar().
 				WithName("MYSQL_DATABASE").
 				WithValue("db"))
+
+	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
+		WithLabels(map[string]string{"app": service.Name}).
+		WithSpec(applyConfigsCoreV1.PodSpec().WithContainers(container).WithTerminationGracePeriodSeconds(10))
+
+	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
+		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
+			WithAccessModes(v1.ReadWriteOnce).
+			WithResources(applyConfigsCoreV1.ResourceRequirements().
+				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
+
+	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
+		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
+		WithSpec(applyConfigsAppsV1.StatefulSetSpec().
+			WithSelector(applyConfigsMetaV1.LabelSelector().
+				WithMatchLabels(map[string]string{"app": service.Name})).
+			WithServiceName(service.Name).
+			WithTemplate(podTemplate).
+			WithVolumeClaimTemplates(pvClaim))
+
+	_, err := m.clientset.AppsV1().StatefulSets(service.Project).Apply(ctx, statefulSet, metav1.ApplyOptions{FieldManager: "letsdeploy"})
+	if err != nil {
+		return errors.Wrap(err, "failed to create K8s deployment for managed service")
+	}
+	return nil
+}
+
+func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service openapi.ManagedService) error {
+	container := applyConfigsCoreV1.Container().
+		WithName(containerName).
+		WithImage(managedServices[service.Type].image).
+		WithPorts(applyConfigsCoreV1.ContainerPort().WithContainerPort(int32(managedServices[service.Type].podPort))).
+		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().WithName("data").WithMountPath("/var/lib/mongodb")).
+		WithEnv(applyConfigsCoreV1.EnvVar().
+			WithName("MONGO_INITDB_ROOT_PASSWORD").
+			WithValueFrom(m.createPasswordEnvVarSource(service)),
+			applyConfigsCoreV1.EnvVar().
+				WithName("MONGO_INITDB_ROOT_USERNAME").
+				WithValue(managedServices[service.Type].username))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).

@@ -18,6 +18,11 @@ export const types: { [type in ManagedServiceTypeEnum]: ManagedServiceType } = {
     name: 'MySQL 8',
     image: () => h('i', { class: 'bi bi-database' })
   },
+  [ManagedServiceTypeEnum.Mongo]: {
+    type: ManagedServiceTypeEnum.Mongo,
+    name: 'MongoDB 5',
+    image: () => h('i', { class: 'bi bi-database' })
+  },
   [ManagedServiceTypeEnum.Redis]: {
     type: ManagedServiceTypeEnum.Redis,
     name: 'Redis 7',
