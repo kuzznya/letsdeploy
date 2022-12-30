@@ -31,7 +31,7 @@ entity managed_service {
   id
   project_id: <<FK project(id)>>
   name
-  type: postgres|mysql|rabbitmq|redis
+  type: postgres|mysql|mongo|rabbitmq|redis
   auth_secret_id <<FK secret(id)>>
 }
 
