@@ -84,6 +84,8 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+        - name: regcred
       containers:
         - name: frontend
           image: ghcr.io/kuzznya/letsdeploy/frontend:latest

@@ -118,6 +118,8 @@ spec:
         app: backend
     spec:
       serviceAccountName: letsdeploy-service-account
+      imagePullSecrets:
+        - name: regcred
       containers:
         - name: backend
           image: ghcr.io/kuzznya/letsdeploy/backend:latest
