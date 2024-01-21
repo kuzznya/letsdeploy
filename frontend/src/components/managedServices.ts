@@ -10,7 +10,7 @@ export type ManagedServiceType = {
 export const types: { [type in ManagedServiceTypeEnum]: ManagedServiceType } = {
   [ManagedServiceTypeEnum.Postgres]: {
     type: ManagedServiceTypeEnum.Postgres,
-    name: "PostgreSQL 13",
+    name: "PostgreSQL 15",
     image: () => h("i", { class: "bi bi-database" }),
   },
   [ManagedServiceTypeEnum.Mysql]: {
@@ -20,7 +20,7 @@ export const types: { [type in ManagedServiceTypeEnum]: ManagedServiceType } = {
   },
   [ManagedServiceTypeEnum.Mongo]: {
     type: ManagedServiceTypeEnum.Mongo,
-    name: "MongoDB 5",
+    name: "MongoDB 6",
     image: () => h("i", { class: "bi bi-database" }),
   },
   [ManagedServiceTypeEnum.Redis]: {
