@@ -1,6 +1,7 @@
 package core
 
 import (
+	"codnect.io/chrono"
 	"context"
 	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
@@ -9,7 +10,6 @@ import (
 	"github.com/kuzznya/letsdeploy/app/util/promise"
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
-	"github.com/procyon-projects/chrono"
 	log "github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

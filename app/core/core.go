@@ -1,10 +1,10 @@
 package core
 
 import (
+	"codnect.io/chrono"
 	"context"
 	"github.com/kuzznya/letsdeploy/app/storage"
 	"github.com/kuzznya/letsdeploy/app/util/promise"
-	"github.com/procyon-projects/chrono"
 	"k8s.io/client-go/kubernetes"
 )
 

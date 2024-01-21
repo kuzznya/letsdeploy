@@ -1,8 +1,8 @@
 package app
 
 import (
+	"codnect.io/chrono"
 	"fmt"
-	oapiMiddleware "github.com/deepmap/oapi-codegen/pkg/gin-middleware"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-contrib/cors"
@@ -14,7 +14,7 @@ import (
 	"github.com/kuzznya/letsdeploy/app/server"
 	"github.com/kuzznya/letsdeploy/app/storage"
 	"github.com/kuzznya/letsdeploy/internal/openapi"
-	"github.com/procyon-projects/chrono"
+	oapiMiddleware "github.com/oapi-codegen/gin-middleware"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"

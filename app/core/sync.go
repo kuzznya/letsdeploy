@@ -1,8 +1,8 @@
 package core
 
 import (
+	"codnect.io/chrono"
 	"context"
-	"github.com/procyon-projects/chrono"
 	log "github.com/sirupsen/logrus"
 	"time"
 )

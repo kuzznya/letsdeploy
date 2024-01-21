@@ -189,7 +189,7 @@ func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context,
 func (m managedServicesImpl) createK8sService(ctx context.Context, service openapi.ManagedService) error {
 	port := applyConfigsCoreV1.ServicePort().
 		WithPort(int32(managedServices[service.Type].podPort)).
-		WithTargetPort(intstr.FromInt(managedServices[service.Type].podPort))
+		WithTargetPort(intstr.FromInt32(int32(managedServices[service.Type].podPort)))
 	serviceConfig := applyConfigsCoreV1.Service(service.Name, service.Project).
 		WithLabels(map[string]string{
 			"letsdeploy.space/managed":      "true",
@@ -275,7 +275,7 @@ func (m managedServicesImpl) createPostgresDeployment(ctx context.Context, servi
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
-			WithResources(applyConfigsCoreV1.ResourceRequirements().
+			WithResources(applyConfigsCoreV1.VolumeResourceRequirements().
 				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
@@ -314,7 +314,7 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
-			WithResources(applyConfigsCoreV1.ResourceRequirements().
+			WithResources(applyConfigsCoreV1.VolumeResourceRequirements().
 				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
@@ -353,7 +353,7 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
-			WithResources(applyConfigsCoreV1.ResourceRequirements().
+			WithResources(applyConfigsCoreV1.VolumeResourceRequirements().
 				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
@@ -390,7 +390,7 @@ func (m managedServicesImpl) createRedisDeployment(ctx context.Context, service 
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().
 			WithAccessModes(v1.ReadWriteOnce).
-			WithResources(applyConfigsCoreV1.ResourceRequirements().
+			WithResources(applyConfigsCoreV1.VolumeResourceRequirements().
 				WithRequests(v1.ResourceList{v1.ResourceStorage: resource.MustParse("500Mi")})))
 
 	statefulSet := applyConfigsAppsV1.StatefulSet(service.Name, service.Project).
