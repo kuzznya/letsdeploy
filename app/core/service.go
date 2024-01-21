@@ -563,7 +563,7 @@ func (s servicesImpl) syncKubernetes(ctx context.Context, projectId string) erro
 		if !contains(servicesMap, name) {
 			err := s.deleteIngress(ctx, projectId, name)
 			if err != nil {
-				log.WithError(err).Errorf("Failed to delete ingress %s, skipping\n", ingress)
+				log.WithError(err).Errorf("Failed to delete ingress %s, skipping\n", ingress.Name)
 			}
 		}
 	}
