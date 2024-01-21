@@ -20,6 +20,7 @@ import (
 	applyConfigsMetaV1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	applyConfigsNetworkingV1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"k8s.io/client-go/kubernetes"
+	"strings"
 )
 
 const containerName = "container-0"
@@ -64,6 +65,14 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 	services := make([]openapi.Service, len(entities))
 	for i, entity := range entities {
 		id := entity.Id
+		envVarEntities, err := s.storage.EnvVarRepository().FindByServiceId(id)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get service env vars")
+		}
+		envVars, err := mapEnvVarEntities(envVarEntities)
+		if err != nil {
+			return nil, err
+		}
 		services[i] = openapi.Service{
 			Id:              &id,
 			Image:           entity.Image,
@@ -71,6 +80,7 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 			Port:            entity.Port,
 			Project:         entity.ProjectId,
 			PublicApiPrefix: fromNullString(entity.PublicApiPrefix),
+			EnvVars:         envVars,
 		}
 	}
 	return services, nil
@@ -121,6 +131,7 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new service")
 	}
+	log.Infof("Created service %s in project %s\n", service.Name, service.Project)
 	return &service, nil
 }
 
@@ -137,22 +148,9 @@ func (s servicesImpl) GetService(id int, auth middleware.Authentication) (*opena
 		return nil, errors.Wrap(err, "failed to get service env vars")
 	}
 
-	envVars := make([]openapi.EnvVar, len(varEntities))
-	for i, entity := range varEntities {
-		envVars[i] = openapi.EnvVar{Name: entity.Name}
-		if entity.Value.Valid {
-			err := envVars[i].FromEnvVar0(openapi.EnvVar0{Value: entity.Value.String})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to map env var entity to model")
-			}
-		} else if entity.Secret.Valid {
-			err := envVars[i].FromEnvVar1(openapi.EnvVar1{Secret: entity.Secret.String})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to map env var entity to model")
-			}
-		} else {
-			return nil, errors.New("Unknown env var type: both Value and Secret are null")
-		}
+	envVars, err := mapEnvVarEntities(varEntities)
+	if err != nil {
+		return nil, err
 	}
 
 	return &openapi.Service{
@@ -247,6 +245,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		EnvVars:         service.EnvVars,
 		PublicApiPrefix: fromNullString(updated.PublicApiPrefix),
 	}
+	log.Infof("Updated service %s in project %s\n", service.Name, service.Project)
 	return &result, nil
 }
 
@@ -271,6 +270,7 @@ func (s servicesImpl) DeleteService(ctx context.Context, id int, auth middleware
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service")
 	}
+	log.Infof("Deleted service %s in project %s\n", service.Name, service.Project)
 	return nil
 }
 
@@ -336,6 +336,7 @@ func (s servicesImpl) SetServiceEnvVar(ctx context.Context, serviceId int, envVa
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save env var")
 	}
+	log.Infof("Set service %s env var %s\n", service.Name, envVar.Name)
 	return &envVar, nil
 }
 
@@ -359,6 +360,7 @@ func (s servicesImpl) DeleteServiceEnvVar(ctx context.Context, serviceId int, en
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service env var")
 	}
+	log.Infof("Deleted service %s env var %s\n", service.Name, envVarName)
 	return nil
 }
 
@@ -425,7 +427,11 @@ func (s servicesImpl) createK8sService(ctx context.Context, service openapi.Serv
 		WithPort(80).
 		WithTargetPort(intstr.FromInt(service.Port))
 	svc := applyConfigsCoreV1.Service(service.Name, service.Project).
-		WithLabels(map[string]string{"letsdeploy.space/managed": "true", "app": service.Name}).
+		WithLabels(map[string]string{
+			"letsdeploy.space/managed":      "true",
+			"letsdeploy.space/service-type": "service",
+			"app":                           service.Name,
+		}).
 		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port).
 			WithSelector(map[string]string{"app": service.Name}))
 	_, err := s.clientset.CoreV1().Services(service.Project).Apply(ctx, svc, metav1.ApplyOptions{FieldManager: "letsdeploy"})
@@ -451,7 +457,10 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		WithHost(service.Project + ".letsdeploy.space").
 		WithHTTP(applyConfigsNetworkingV1.HTTPIngressRuleValue().WithPaths(path))
 	ingress := applyConfigsNetworkingV1.Ingress(service.Name+"-ingress", service.Project).
-		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
+		WithLabels(map[string]string{
+			"letsdeploy.space/managed":      "true",
+			"letsdeploy.space/service-type": "service",
+		}).
 		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule))
 	_, err := s.clientset.NetworkingV1().Ingresses(service.Project).Apply(ctx, ingress, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
@@ -465,9 +474,15 @@ func (s servicesImpl) deleteServiceDeployment(ctx context.Context, project strin
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete service deployment")
 	}
+
 	err = s.deleteK8sService(ctx, project, service)
-	if err != nil {
-		return err
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.WithError(err).Errorf("Failed to delete K8s service %s after deleting service deployment in namespace %s\n", service, project)
+	}
+
+	err = s.deleteIngress(ctx, project, service)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.WithError(err).Errorf("Failed to delete ingress %s after deleting service deployment in namespace %s\n", service, project)
 	}
 	return nil
 }
@@ -477,14 +492,16 @@ func (s servicesImpl) deleteK8sService(ctx context.Context, project string, serv
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete K8s service for user service")
 	}
+	log.Debugf("Deleted K8s service %s in namespace %s\n", service, project)
 	return nil
 }
 
 func (s servicesImpl) deleteIngress(ctx context.Context, project string, service string) error {
-	err := s.clientset.NetworkingV1().Ingresses(project).Delete(ctx, service, metav1.DeleteOptions{})
+	err := s.clientset.NetworkingV1().Ingresses(project).Delete(ctx, service+"-ingress", metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete ingress for service")
 	}
+	log.Debugf("Deleted ingress %s in namespace %s\n", service, project)
 	return nil
 }
 
@@ -500,18 +517,57 @@ func (s servicesImpl) syncKubernetes(ctx context.Context, projectId string) erro
 			log.WithError(err).Errorf("Failed to create service deployment %s, skipping\n", service.Name)
 		}
 	}
-	deployments, err := s.clientset.AppsV1().Deployments(projectId).List(ctx, metav1.ListOptions{})
+
+	deploymentOptions := metav1.ListOptions{
+		LabelSelector: "letsdeploy.space/managed=true",
+	}
+	deployments, err := s.clientset.AppsV1().Deployments(projectId).List(ctx, deploymentOptions)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments list")
 	}
 	for _, deployment := range deployments.Items {
-		if !contains(servicesMap, deployment.Name) && deployment.Labels["letsdeploy.space/managed"] == "true" {
+		if !contains(servicesMap, deployment.Name) {
 			err := s.deleteServiceDeployment(ctx, projectId, deployment.Name)
 			if err != nil {
 				log.WithError(err).Errorf("Failed to delete deployment %s, skipping\n", deployment.Name)
 			}
+		} else {
+			log.Debugf("Checked deployment %s\n", deployment.Name)
 		}
 	}
+
+	serviceOptions := metav1.ListOptions{
+		LabelSelector: "letsdeploy.space/managed=true,letsdeploy.space/service-type=service",
+	}
+	k8sServices, err := s.clientset.CoreV1().Services(projectId).List(ctx, serviceOptions)
+	if err != nil {
+		return errors.Wrap(err, "failed to get K8s services")
+	}
+	for _, k8sService := range k8sServices.Items {
+		if !contains(servicesMap, k8sService.Name) {
+			err := s.deleteK8sService(ctx, projectId, k8sService.Name)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to delete k8s service %s, skipping\n", k8sService.Name)
+			}
+		} else {
+			log.Debugf("Checked K8s service %s\n", k8sService.Name)
+		}
+	}
+
+	ingresses, err := s.clientset.CoreV1().Services(projectId).List(ctx, deploymentOptions)
+	if err != nil {
+		return errors.Wrap(err, "failed to get ingresses")
+	}
+	for _, ingress := range ingresses.Items {
+		name, _ := strings.CutSuffix(ingress.Name, "-ingress")
+		if !contains(servicesMap, name) {
+			err := s.deleteIngress(ctx, projectId, name)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to delete ingress %s, skipping\n", ingress)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -526,4 +582,25 @@ func processEnvVar(envVar openapi.EnvVar, onValue func(openapi.EnvVar0), onSecre
 		onSecret(withSecret)
 		return
 	}
+}
+
+func mapEnvVarEntities(entities []storage.EnvVarEntity) ([]openapi.EnvVar, error) {
+	envVars := make([]openapi.EnvVar, len(entities))
+	for i, entity := range entities {
+		envVars[i] = openapi.EnvVar{Name: entity.Name}
+		if entity.Value.Valid {
+			err := envVars[i].FromEnvVar0(openapi.EnvVar0{Value: entity.Value.String})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to map env var entity to model")
+			}
+		} else if entity.Secret.Valid {
+			err := envVars[i].FromEnvVar1(openapi.EnvVar1{Secret: entity.Secret.String})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to map env var entity to model")
+			}
+		} else {
+			return nil, errors.New("Unknown env var type: both Value and Secret are null")
+		}
+	}
+	return envVars, nil
 }

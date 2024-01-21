@@ -27,9 +27,9 @@ type managedServiceParams struct {
 }
 
 var managedServices = map[openapi.ManagedServiceType]managedServiceParams{
-	openapi.Postgres: {image: "postgres:14", username: "postgres", podPort: 5432},
+	openapi.Postgres: {image: "postgres:15", username: "postgres", podPort: 5432},
 	openapi.Mysql:    {image: "mysql:8", username: "root", podPort: 3306},
-	openapi.Mongo:    {image: "mongo:5", username: "root", podPort: 27017},
+	openapi.Mongo:    {image: "mongo:6", username: "root", podPort: 27017},
 	openapi.Redis:    {image: "redis:7", username: "", podPort: 6379},
 	openapi.Rabbitmq: {image: "rabbitmq:3-management", username: "guest", podPort: 5672},
 }
@@ -100,6 +100,7 @@ func (m managedServicesImpl) CreateManagedService(ctx context.Context, service o
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create managed service")
 	}
+	log.Infof("Created managed service %s in project %s\n", service.Name, service.Project)
 	return &service, nil
 }
 
@@ -143,6 +144,7 @@ func (m managedServicesImpl) DeleteManagedService(ctx context.Context, id int, a
 	if err != nil {
 		return errors.Wrap(err, "failed to delete managed service")
 	}
+	log.Infof("Deleted managed service %s in project %s\n", entity.Name, entity.ProjectId)
 	return nil
 }
 
@@ -186,11 +188,16 @@ func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context,
 
 func (m managedServicesImpl) createK8sService(ctx context.Context, service openapi.ManagedService) error {
 	port := applyConfigsCoreV1.ServicePort().
-		WithPort(80).
+		WithPort(int32(managedServices[service.Type].podPort)).
 		WithTargetPort(intstr.FromInt(managedServices[service.Type].podPort))
 	serviceConfig := applyConfigsCoreV1.Service(service.Name, service.Project).
-		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
-		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port))
+		WithLabels(map[string]string{
+			"letsdeploy.space/managed":      "true",
+			"letsdeploy.space/service-type": "managed",
+			"app":                           service.Name,
+		}).
+		WithSpec(applyConfigsCoreV1.ServiceSpec().WithPorts(port).
+			WithSelector(map[string]string{"app": service.Name}))
 	_, err := m.clientset.CoreV1().Services(service.Project).Apply(ctx, serviceConfig, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return errors.Wrap(err, "failed to create K8s service for managed service")
@@ -467,16 +474,18 @@ func (m managedServicesImpl) createRabbitMQDeployment(ctx context.Context, servi
 
 func (m managedServicesImpl) deleteManagedServiceDeployment(ctx context.Context, namespace string, name string) error {
 	err := m.clientset.AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete managed service StatefulSet")
 	}
+
+	err = m.deleteK8sService(ctx, namespace, name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.WithError(err).Errorln("Failed to delete K8s service after deleting managed service, skipping")
+	}
+
 	err = m.deletePasswordSecret(ctx, namespace, name)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.WithError(err).Errorln("Failed to delete secret of managed service, skipping")
-	}
-	err = m.deleteK8sService(ctx, namespace, name)
-	if err != nil {
-		return err
+		log.WithError(err).Errorln("Failed to delete password secret after deleting managed service, skipping")
 	}
 	return nil
 }
@@ -509,17 +518,38 @@ func (m managedServicesImpl) syncKubernetes(ctx context.Context, projectId strin
 			log.WithError(err).Errorf("Failed to create managed service deployment %s, skipping\n", service.Name)
 		}
 	}
-	statefulSets, err := m.clientset.AppsV1().StatefulSets(projectId).List(ctx, metav1.ListOptions{})
+
+	ssOptions := metav1.ListOptions{
+		LabelSelector: "letsdeploy.space/managed=true",
+	}
+	statefulSets, err := m.clientset.AppsV1().StatefulSets(projectId).List(ctx, ssOptions)
 	if err != nil {
 		return errors.Wrap(err, "failed to get statefulsets list")
 	}
 	for _, statefulSet := range statefulSets.Items {
-		if !contains(servicesMap, statefulSet.Name) && statefulSet.Labels["letsdeploy.space/managed"] == "true" {
+		if !contains(servicesMap, statefulSet.Name) {
 			err := m.deleteManagedServiceDeployment(ctx, projectId, statefulSet.Name)
 			if err != nil {
 				log.WithError(err).Errorf("Failed to delete managed service statefulset %s, skipping\n", statefulSet.Name)
 			}
 		}
 	}
+
+	serviceOptions := metav1.ListOptions{
+		LabelSelector: "letsdeploy.space/managed=true,letsdeploy.space/service-type=managed",
+	}
+	k8sServices, err := m.clientset.CoreV1().Services(projectId).List(ctx, serviceOptions)
+	if err != nil {
+		return errors.Wrap(err, "failed to get K8s services")
+	}
+	for _, k8sService := range k8sServices.Items {
+		if !contains(servicesMap, k8sService.Name) {
+			err := m.deleteK8sService(ctx, projectId, k8sService.Name)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to delete k8s service %s, skipping\n", k8sService.Name)
+			}
+		}
+	}
+
 	return nil
 }

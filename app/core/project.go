@@ -107,6 +107,7 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new project")
 	}
+	log.Infof("Project %s created\n", project.Id)
 	return &project, nil
 }
 
@@ -133,7 +134,6 @@ func (p projectsImpl) GetProjectInfo(id string, auth middleware.Authentication) 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project participants")
 	}
-	fmt.Printf("services: %+v\n", p.services)
 	services, err := p.services.GetProjectServices(id, auth)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project services")
@@ -161,6 +161,7 @@ func (p projectsImpl) UpdateProject(project openapi.Project, auth middleware.Aut
 	if err != nil {
 		return errors.Wrap(err, "failed to update project")
 	}
+	log.Infof("Project %s updated\n", project.Id)
 	return nil
 }
 
@@ -183,6 +184,7 @@ func (p projectsImpl) DeleteProject(ctx context.Context, id string, auth middlew
 	if err != nil {
 		return errors.Wrap(err, "failed to delete project")
 	}
+	log.Infof("Project %s deleted\n", id)
 	return nil
 }
 
@@ -217,6 +219,7 @@ func (p projectsImpl) AddParticipant(id string, username string, auth middleware
 	if err != nil {
 		return errors.Wrap(err, "failed to add participant")
 	}
+	log.Infof("Added participant %s to project %s\n", username, id)
 	return nil
 }
 
@@ -228,6 +231,7 @@ func (p projectsImpl) RemoveParticipant(id string, username string, auth middlew
 	if err != nil {
 		return errors.Wrap(err, "failed to add participant")
 	}
+	log.Infof("Removed participant %s from project %s\n", username, id)
 	return nil
 }
 
@@ -245,6 +249,7 @@ func (p projectsImpl) JoinProject(ctx context.Context, code string, auth middlew
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to add participant")
 	}
+	log.Infof("User %s joined project %s\n", auth.Username, entity.Id)
 	return &openapi.Project{Id: entity.Id}, nil
 }
 
@@ -299,6 +304,7 @@ func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new secret")
 	}
+	log.Infof("Created secret %s in project %s\n", secret.Name, projectId)
 	return &secret, nil
 }
 
@@ -321,6 +327,7 @@ func (p projectsImpl) DeleteSecret(ctx context.Context, projectId string, name s
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.WithError(err).Warnln("Failed to delete secret from Kubernetes")
 	}
+	log.Infof("Deleted secret %s in project %s\n", name, projectId)
 	return nil
 }
 

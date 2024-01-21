@@ -58,6 +58,9 @@ RETURNING  env_var.id, env_var.service_id, env_var.name, env_var.value,
 }
 
 func (e envVarRepositoryImpl) CreateOrUpdateAll(vars []EnvVarEntity) ([]EnvVarEntity, error) {
+	if len(vars) == 0 {
+		return vars, nil
+	}
 
 	query := `
 INSERT INTO env_var (service_id, name, value, secret_id)
