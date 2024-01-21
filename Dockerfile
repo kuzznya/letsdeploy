@@ -16,6 +16,7 @@ RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -
 
 WORKDIR /app
 
+COPY static ./static
 COPY api ./api
 COPY configs ./configs
 COPY migrations ./migrations
