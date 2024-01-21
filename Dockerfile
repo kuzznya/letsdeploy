@@ -8,7 +8,7 @@ COPY . .
 RUN go generate github.com/kuzznya/letsdeploy/...
 RUN go build github.com/kuzznya/letsdeploy/cmd/letsdeploy
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ca-certificates && \
