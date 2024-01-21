@@ -1,7 +1,7 @@
-<script setup lang="ts">
-import {useKeycloak} from "@/keycloak";
+<script lang="ts" setup>
+import { useKeycloak } from "@/keycloak";
 
-const keycloak = useKeycloak()
+const keycloak = useKeycloak();
 </script>
 
 <template>
@@ -10,28 +10,40 @@ const keycloak = useKeycloak()
 
     <b-row class="my-3">
       <b-col>
-        <b-button :to="{ name: 'projects' }" variant="info" style="max-width: 12rem;">Explore projects</b-button>
+        <b-button
+          :to="{ name: 'projects' }"
+          style="max-width: 12rem"
+          variant="info"
+          >Explore projects</b-button
+        >
       </b-col>
     </b-row>
     <b-row class="my-3">
       <b-col>
-        <b-button variant="outline-info" style="max-width: 12rem;">Create new project</b-button>
+        <b-button style="max-width: 12rem" variant="outline-info"
+          >Create new project</b-button
+        >
       </b-col>
     </b-row>
   </b-container>
 
   <b-container v-else>
-    <b-row style="min-height: 75vh;">
+    <b-row style="min-height: 75vh">
       <b-col class="m-auto">
         <p>
-          Tired of setting up the deployment for each of your pet projects?
-          Want to have a faster way to test your ideas?
-          Or maybe you want to simplify the deployment of microservices?
+          Tired of setting up the deployment for each of your pet projects? Want
+          to have a faster way to test your ideas? Or maybe you want to simplify
+          the deployment of microservices?
         </p>
-        <p><b>Letsdeploy provides you the ability to deploy your project in a few clicks!</b></p>
         <p>
-          Log in or sign up to use the system.
-          After creating an account, please wait for some time for administrator to verify it
+          <b
+            >Letsdeploy provides you the ability to deploy your project in a few
+            clicks!</b
+          >
+        </p>
+        <p>
+          Log in or sign up to use the system. After creating an account, please
+          wait for some time for administrator to verify it
         </p>
 
         <div class="text-center">
@@ -42,6 +54,4 @@ const keycloak = useKeycloak()
   </b-container>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

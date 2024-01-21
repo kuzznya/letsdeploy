@@ -1,8 +1,8 @@
 [*]
 indent_size = 4
 
-[{*.vue, *.js, *.ts, *.json, *.html}]
+[{*.vue,*.js,*.ts,*.json,*.html}]
 indent_size = 2
 
-[{*.yml, *.yaml}]
+[{*.yml,*.yaml}]
 indent_size = 2

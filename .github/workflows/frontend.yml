@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Generate API client using OpenAPI generator
-        run: ./openapi-generator.sh
+        run: npm run openapi-generate
         working-directory: frontend
       - name: Build container
         run: docker build -t ghcr.io/kuzznya/letsdeploy/frontend:latest .

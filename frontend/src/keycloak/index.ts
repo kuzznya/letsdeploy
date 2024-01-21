@@ -1,11 +1,10 @@
-import {inject, InjectionKey} from "vue";
-import {KeycloakInstance} from "@dsb-norge/vue-keycloak-js/dist/types";
+import { inject, InjectionKey } from "vue";
+import Keycloak from "keycloak-js";
 
-export const keycloakKey: InjectionKey<KeycloakInstance> = Symbol('keycloak')
+export const keycloakKey: InjectionKey<Keycloak> = Symbol("keycloak");
 
-export function useKeycloak(): KeycloakInstance {
-  const instance = inject(keycloakKey)
-  if (instance == undefined)
-    throw new Error('Keycloak is not registered')
-  return instance
+export function useKeycloak(): Keycloak {
+  const instance = inject(keycloakKey);
+  if (instance == undefined) throw new Error("Keycloak is not registered");
+  return instance;
 }

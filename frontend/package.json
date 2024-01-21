@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "npm-run-all openapi-generate run-dev",
+    "run-dev": "vite",
+    "openapi-generate": "openapi-generator-cli generate -i ../api/openapi.yaml -g typescript-axios -o src/api/generated",
     "build": "run-p type-check build-only",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -21,6 +23,7 @@
     "vue-router": "^4.1.6"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.9.0",
     "@rushstack/eslint-patch": "^1.1.4",
     "@types/node": "^18.11.12",
     "@vitejs/plugin-vue": "^4.0.0",

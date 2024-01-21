@@ -1,87 +1,87 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
-import ProjectsView from '@/views/ProjectsView.vue'
-import ProjectView from '@/views/ProjectView.vue'
-import JoinProjectView from '@/views/JoinProjectView.vue'
-import NewServiceView from '@/views/NewServiceView.vue'
-import ServiceView from '@/views/ServiceView.vue'
-import NewManagedServiceView from '@/views/NewManagedServiceView.vue'
-import ManagedServiceView from '@/views/ManagedServiceView.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import HomeView from "@/views/HomeView.vue";
+import ProjectsView from "@/views/ProjectsView.vue";
+import ProjectView from "@/views/ProjectView.vue";
+import JoinProjectView from "@/views/JoinProjectView.vue";
+import NewServiceView from "@/views/NewServiceView.vue";
+import ServiceView from "@/views/ServiceView.vue";
+import NewManagedServiceView from "@/views/NewManagedServiceView.vue";
+import ManagedServiceView from "@/views/ManagedServiceView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'home',
+      path: "/",
+      name: "home",
       component: HomeView,
       meta: {
-        secured: false
-      }
+        secured: false,
+      },
     },
     {
-      path: '/projects',
-      name: 'projects',
+      path: "/projects",
+      name: "projects",
       component: ProjectsView,
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/projects/:id',
-      name: 'project',
+      path: "/projects/:id",
+      name: "project",
       component: ProjectView,
-      props: r => ({ id: r.params.id }),
+      props: (r) => ({ id: r.params.id }),
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/projects/invitations/:code',
-      name: 'joinProject',
+      path: "/projects/invitations/:code",
+      name: "joinProject",
       component: JoinProjectView,
-      props: r => ({ code: r.params.code }),
+      props: (r) => ({ code: r.params.code }),
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/projects/:id/new-service',
-      name: 'newService',
+      path: "/projects/:id/new-service",
+      name: "newService",
       component: NewServiceView,
-      props: r => ({ project: r.params.id }),
+      props: (r) => ({ project: r.params.id }),
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/services/:id',
-      name: 'service',
+      path: "/services/:id",
+      name: "service",
       component: ServiceView,
-      props: r => ({ id: Number.parseInt(r.params.id as string) }),
+      props: (r) => ({ id: Number.parseInt(r.params.id as string) }),
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/projects/:id/new-managed-service',
-      name: 'newManagedService',
+      path: "/projects/:id/new-managed-service",
+      name: "newManagedService",
       component: NewManagedServiceView,
-      props: r => ({ project: r.params.id }),
+      props: (r) => ({ project: r.params.id }),
       meta: {
-        secured: true
-      }
+        secured: true,
+      },
     },
     {
-      path: '/managed-services/:id',
-      name: 'managedService',
+      path: "/managed-services/:id",
+      name: "managedService",
       component: ManagedServiceView,
-      props: r => ({  id: Number.parseInt(r.params.id as string) }),
+      props: (r) => ({ id: Number.parseInt(r.params.id as string) }),
       meta: {
-        secured: true
-      }
-    }
-  ]
-})
+        secured: true,
+      },
+    },
+  ],
+});
 
-export default router
+export default router;
