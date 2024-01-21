@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - frontend/**
+      - .github/workflows/frontend.yml
+      - docs/**
+      - README.md
+      - .gitignore
   workflow_dispatch:
 
 jobs:

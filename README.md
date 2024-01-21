@@ -30,32 +30,19 @@ Letsdeploy works on top of Kubernetes cluster.
     go generate github.com/kuzznya/letsdeploy/...
     ```
 
-3. Run openapi generator:
-
-    - Windows:
-
-        ```cmd
-        .\frontend\openapi-generator.cmd
-        ```
-    - Linux/MacOS:
-    
-        ```bash
-        ./frontend/openapi-generator.sh
-        ```
-
-4. Run `docker-compose`
+3. Run `docker-compose`
     
     ```bash
     docker-compose up -d
     ```
 
-5. Run server:
+4. Run server:
 
     ```bash
     go run .\cmd\letsdeploy\main.go
     ```
 
-6. Run frontend:
+5. Run frontend:
 
     ```bash
     npm run dev --prefix frontend
