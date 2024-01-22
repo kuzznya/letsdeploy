@@ -370,7 +370,9 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 			ManagedServiceId: secret.ManagedServiceId,
 			Name:             secret.Name,
 		}
-		_, err := p.CreateSecret(ctx, projectId, s, secret.Value, middleware.ServiceAccount)
+		config := applyConfigsV1.Secret(strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), projectId).
+			WithStringData(map[string]string{secretKey: secret.Value})
+		_, err = p.clientset.CoreV1().Secrets(projectId).Apply(ctx, config, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 		if err != nil {
 			log.WithError(err).Errorf("Failed to create/update project secret %s, skipping", s.Name)
 		}
