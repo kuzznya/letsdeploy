@@ -361,8 +361,23 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 		return errors.Wrap(err, "failed to create project namespace")
 	}
 
-	// TODO sync secrets
-	log.Errorln("Secrets sync is not implemented!")
+	secrets, err := p.storage.SecretRepository().FindByProjectId(projectId)
+	if err != nil {
+		return errors.Wrap(err, "Failed to get project secrets")
+	}
+	for _, secret := range secrets {
+		s := openapi.Secret{
+			ManagedServiceId: secret.ManagedServiceId,
+			Name:             secret.Name,
+		}
+		_, err := p.CreateSecret(ctx, projectId, s, secret.Value, middleware.ServiceAccount)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to create/update project secret %s, skipping", s.Name)
+		}
+	}
+
+	// TODO sync secrets both ways
+	log.Errorln("Secrets sync is not implemented fully!")
 
 	log.Debugf("Project %s checked, namespace exists or was created", projectId)
 	return nil
