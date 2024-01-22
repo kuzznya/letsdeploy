@@ -100,7 +100,7 @@ func (m managedServicesImpl) CreateManagedService(ctx context.Context, service o
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create managed service")
 	}
-	log.Infof("Created managed service %s in project %s\n", service.Name, service.Project)
+	log.Infof("Created managed service %s in project %s", service.Name, service.Project)
 	return &service, nil
 }
 
@@ -144,7 +144,7 @@ func (m managedServicesImpl) DeleteManagedService(ctx context.Context, id int, a
 	if err != nil {
 		return errors.Wrap(err, "failed to delete managed service")
 	}
-	log.Infof("Deleted managed service %s in project %s\n", entity.Name, entity.ProjectId)
+	log.Infof("Deleted managed service %s in project %s", entity.Name, entity.ProjectId)
 	return nil
 }
 

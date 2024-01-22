@@ -131,7 +131,7 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new service")
 	}
-	log.Infof("Created service %s in project %s\n", service.Name, service.Project)
+	log.Infof("Created service %s in project %s", service.Name, service.Project)
 	return &service, nil
 }
 
@@ -245,7 +245,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		EnvVars:         service.EnvVars,
 		PublicApiPrefix: fromNullString(updated.PublicApiPrefix),
 	}
-	log.Infof("Updated service %s in project %s\n", service.Name, service.Project)
+	log.Infof("Updated service %s in project %s", service.Name, service.Project)
 	return &result, nil
 }
 
@@ -270,7 +270,7 @@ func (s servicesImpl) DeleteService(ctx context.Context, id int, auth middleware
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service")
 	}
-	log.Infof("Deleted service %s in project %s\n", service.Name, service.Project)
+	log.Infof("Deleted service %s in project %s", service.Name, service.Project)
 	return nil
 }
 
@@ -336,7 +336,7 @@ func (s servicesImpl) SetServiceEnvVar(ctx context.Context, serviceId int, envVa
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save env var")
 	}
-	log.Infof("Set service %s env var %s\n", service.Name, envVar.Name)
+	log.Infof("Set service %s env var %s", service.Name, envVar.Name)
 	return &envVar, nil
 }
 
@@ -360,7 +360,7 @@ func (s servicesImpl) DeleteServiceEnvVar(ctx context.Context, serviceId int, en
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service env var")
 	}
-	log.Infof("Deleted service %s env var %s\n", service.Name, envVarName)
+	log.Infof("Deleted service %s env var %s", service.Name, envVarName)
 	return nil
 }
 
@@ -492,7 +492,7 @@ func (s servicesImpl) deleteK8sService(ctx context.Context, project string, serv
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete K8s service for user service")
 	}
-	log.Debugf("Deleted K8s service %s in namespace %s\n", service, project)
+	log.Debugf("Deleted K8s service %s in namespace %s", service, project)
 	return nil
 }
 
@@ -501,7 +501,7 @@ func (s servicesImpl) deleteIngress(ctx context.Context, project string, service
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete ingress for service")
 	}
-	log.Debugf("Deleted ingress %s in namespace %s\n", service, project)
+	log.Debugf("Deleted ingress %s in namespace %s", service, project)
 	return nil
 }
 
@@ -532,7 +532,7 @@ func (s servicesImpl) syncKubernetes(ctx context.Context, projectId string) erro
 				log.WithError(err).Errorf("Failed to delete deployment %s, skipping\n", deployment.Name)
 			}
 		} else {
-			log.Debugf("Checked deployment %s\n", deployment.Name)
+			log.Debugf("Checked deployment %s", deployment.Name)
 		}
 	}
 
@@ -550,7 +550,7 @@ func (s servicesImpl) syncKubernetes(ctx context.Context, projectId string) erro
 				log.WithError(err).Errorf("Failed to delete k8s service %s, skipping\n", k8sService.Name)
 			}
 		} else {
-			log.Debugf("Checked K8s service %s\n", k8sService.Name)
+			log.Debugf("Checked K8s service %s", k8sService.Name)
 		}
 	}
 
