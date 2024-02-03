@@ -7,6 +7,6 @@ import (
 
 func New(cfg *viper.Viper) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr: cfg.GetString("redisclient.host"),
+		Addr: cfg.GetString("redis.host"),
 	})
 }
