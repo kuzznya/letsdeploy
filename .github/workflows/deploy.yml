@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Prepare .kube directory
         run: mkdir ~/.kube || echo "Cannot create ~/.kube directory, skipping"
       - name: Prepare kubeconfig
