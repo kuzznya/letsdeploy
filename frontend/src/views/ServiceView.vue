@@ -56,6 +56,21 @@ function copy<T>(value: T): T {
       <span class="text-nowrap">{{ service.name }}</span>
     </h2>
 
+    <b-row class="my-3">
+      <b-col>
+        <b-button
+          v-if="service.publicApiPrefix != null && service.publicApiPrefix.length > 0"
+          class="mx-1 mb-1"
+          :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+          :href="`http://${service.project}.letsdeploy.space${service.publicApiPrefix}`"
+          target="_blank"
+          @click.stop=""
+        >
+          Open service <i class="bi bi-box-arrow-up-right"></i>
+        </b-button>
+      </b-col>
+    </b-row>
+
     <!--suppress HtmlUnknownBooleanAttribute -->
     <b-nav tabs class="mb-3">
       <b-nav-item

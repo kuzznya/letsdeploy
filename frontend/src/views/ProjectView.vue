@@ -164,6 +164,14 @@ function cancelSecretCreation() {
   <b-container>
     <h1 class="font-monospace text-center">{{ project.id }}</h1>
 
+    <b-row>
+      <p><b>Project domain: </b>
+        <b-link :href="`http://${project.id}.letsdeploy.space`" target="_blank" @click.stop="">
+          {{project.id}}.letsdeploy.space
+        </b-link>
+      </p>
+    </b-row>
+
     <p>
       <b>Participants:</b>
       {{ participantList() }}
@@ -227,15 +235,16 @@ function cancelSecretCreation() {
       <b-row v-for="service in project.services" :key="service.id">
         <b-col>
           <b-card
-            bg-variant="primary"
+            :bg-variant="darkModeEnabled ? 'dark' : 'light'"
+            border-variant="primary"
+            :text-variant="darkModeEnabled ? 'light' : 'dark'"
             class="my-2 b-card-clickable"
-            text-variant="light"
             @click="
               router.push({ name: 'service', params: { id: service.id } })
             "
           >
             <b-row>
-              <b-col>
+              <b-col class="flex-grow-0 mt-2">
                 <b-card-title class="font-monospace">{{
                   service.name
                 }}</b-card-title>
@@ -243,8 +252,27 @@ function cancelSecretCreation() {
 
               <b-col class="text-end">
                 <b-button
-                  class="mr-2"
-                  variant="outline-light"
+                  v-if="service.publicApiPrefix != null && service.publicApiPrefix.length > 0"
+                  class="mx-1 mb-1"
+                  :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+                  :href="`http://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
+                  target="_blank"
+                  @click.stop=""
+                >
+                  Open <i class="bi bi-box-arrow-up-right"></i>
+                </b-button>
+
+                <b-button
+                  class="mx-1 mb-1"
+                  :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+                  @click.stop="router.push({ name: 'serviceLogs', params: { id: service.id } })"
+                >
+                  <i class="bi bi-file-text"></i>
+                </b-button>
+
+                <b-button
+                  class="mx-1 mb-1"
+                  variant="outline-danger"
                   @click.stop="onDeleteServiceClicked(service)"
                 >
                   <i class="bi bi-trash"></i>
@@ -252,10 +280,14 @@ function cancelSecretCreation() {
               </b-col>
             </b-row>
 
-            <p>
-              {{ service.image }}<br />Port {{ service.port
-              }}<span class="ms-5">{{ service.publicApiPrefix ?? "" }}</span>
-            </p>
+            <b-row>
+              <b-col>
+                <p>
+                  {{ service.image }}<br />Port {{ service.port
+                  }}<span class="ms-5">{{ service.publicApiPrefix ?? "" }}</span>
+                </p>
+              </b-col>
+            </b-row>
           </b-card>
         </b-col>
       </b-row>
@@ -286,7 +318,7 @@ function cancelSecretCreation() {
       <h3>Managed services</h3>
 
       <b-button
-        :to="{ name: 'newManagedService', params: { project: id } }"
+        :to="{ name: 'newManagedService', params: { project: project.id } }"
         class="mb-3"
         variant="info"
       >
@@ -299,9 +331,10 @@ function cancelSecretCreation() {
       >
         <b-col>
           <b-card
-            bg-variant="primary"
+            :bg-variant="darkModeEnabled ? 'dark' : 'light'"
+            border-variant="primary"
+            :text-variant="darkModeEnabled ? 'light' : 'dark'"
             class="my-2 b-card-clickable"
-            text-variant="light"
             @click="
               router.push({
                 name: 'managedService',
@@ -319,7 +352,7 @@ function cancelSecretCreation() {
               <b-col class="text-end">
                 <b-button
                   class="mr-2"
-                  variant="outline-light"
+                  variant="outline-danger"
                   @click.stop="onDeleteManagedServiceClicked(managedService)"
                 >
                   <i class="bi bi-trash"></i>
@@ -411,9 +444,10 @@ function cancelSecretCreation() {
       <b-row v-for="secret in secrets" :key="secret.name">
         <b-col>
           <b-card
-            bg-variant="primary"
+            :bg-variant="darkModeEnabled ? 'dark' : 'light'"
+            border-variant="primary"
+            :text-variant="darkModeEnabled ? 'light' : 'dark'"
             class="my-2"
-            text-variant="light"
             @click="() => {}"
           >
             <b-row>
@@ -426,7 +460,7 @@ function cancelSecretCreation() {
               <b-col v-if="secret.managedService == null" class="text-end">
                 <b-button
                   class="mr-2"
-                  variant="outline-light"
+                  variant="outline-danger"
                   @click.stop="onDeleteSecretClicked(secret.name)"
                 >
                   <i class="bi bi-trash"></i>

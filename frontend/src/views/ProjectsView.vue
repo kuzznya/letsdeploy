@@ -157,6 +157,11 @@ async function projectParticipants(id: string) {
               </b-button>
             </b-col>
           </b-row>
+          <b-row>
+            <b-link :href="`http://${project.id}.letsdeploy.space`" target="_blank" @click.stop="">
+              {{project.id}}.letsdeploy.space
+            </b-link>
+          </b-row>
           {{ project.participants }}
         </b-card>
       </b-col>

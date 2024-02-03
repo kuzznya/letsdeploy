@@ -48,10 +48,10 @@ const router = createRouter({
       },
     },
     {
-      path: "/projects/:id/new-service",
+      path: "/projects/:project/new-service",
       name: "newService",
       component: NewServiceView,
-      props: (r) => ({ project: r.params.id }),
+      props: (r) => ({ project: r.params.project }),
       meta: {
         secured: true,
       },
@@ -80,10 +80,10 @@ const router = createRouter({
       },
     },
     {
-      path: "/projects/:id/new-managed-service",
+      path: "/projects/:project/new-managed-service",
       name: "newManagedService",
       component: NewManagedServiceView,
-      props: (r) => ({ project: r.params.id }),
+      props: (r) => ({ project: r.params.project }),
       meta: {
         secured: true,
       },
