@@ -3,8 +3,10 @@ import {
   ManagedServiceApi,
   ProjectApi,
   ServiceApi,
+  TokenApi,
 } from "@/api/generated";
 import Keycloak from "keycloak-js";
+import { ServiceLogsApi } from "@/api/logs";
 
 let keycloak: Keycloak | null = null;
 
@@ -23,6 +25,8 @@ export default {
   ProjectApi: new ProjectApi(config),
   ServiceApi: new ServiceApi(config),
   ManagedServiceApi: new ManagedServiceApi(config),
+  TokenApi: new TokenApi(config),
+  ServiceLogsApi: new ServiceLogsApi(config),
   registerKeycloak(instance: Keycloak) {
     keycloak = instance;
   },

@@ -25,7 +25,7 @@ if (
 
 <template>
   <header>
-    <b-navbar dark="true" variant="dark">
+    <b-navbar dark="true" variant="dark" data-bs-theme="dark">
       <b-navbar-brand style="cursor: pointer" @click="$router.push('/')"
         >Letsdeploy
       </b-navbar-brand>
@@ -47,7 +47,7 @@ if (
   </header>
 
   <Suspense>
-    <b-container>
+    <b-container :data-bs-theme="darkModeEnabled ? 'dark' : 'light'">
       <router-view class="mt-3" />
     </b-container>
   </Suspense>

@@ -10,6 +10,7 @@ import (
 	"github.com/kuzznya/letsdeploy/app/core"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/database"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/k8s"
+	"github.com/kuzznya/letsdeploy/app/infrastructure/redisclient"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/server"
 	"github.com/kuzznya/letsdeploy/app/storage"
@@ -39,13 +40,14 @@ func Start() {
 
 	db := database.New(cfg)
 	store := storage.New(db)
+	rdb := redisclient.New(cfg)
 	clientset := setupK8sClientset(cfg)
 
-	c := core.New(store, clientset, chrono.NewDefaultTaskScheduler())
+	c := core.New(store, rdb, clientset, chrono.NewDefaultTaskScheduler())
 	s := server.New(c)
 
 	r := gin.Default()
-	r.Use(openApiValidatorMiddleware("/api/v1"))
+	r.Use(openApiValidatorMiddleware([]string{"/api/v1"}, []string{"/api/v1/services/:id/logs"}))
 	r.Use(middleware.ErrorHandler)
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"https://letsdeploy.space", "http://localhost:5173"},
@@ -64,6 +66,8 @@ func Start() {
 		},
 	})
 
+	server.ServiceLogStreamEndpoint(r, c, rdb)
+
 	r.Use(func(ctx *gin.Context) {
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(200)
@@ -73,7 +77,7 @@ func Start() {
 	r.GET("/v3/api-docs", func(ctx *gin.Context) {
 		docs, err := openapi.GetSwagger()
 		if err != nil {
-			ctx.Error(err)
+			_ = ctx.Error(err)
 			return
 		}
 		ctx.JSON(200, docs)
@@ -135,11 +139,12 @@ func setupK8sClientset(cfg *viper.Viper) *kubernetes.Clientset {
 	return clienset
 }
 
-func openApiValidatorMiddleware(includePaths ...string) gin.HandlerFunc {
+func openApiValidatorMiddleware(includePaths []string, excludePaths []string) gin.HandlerFunc {
 	apiDocs, err := openapi.GetSwagger()
 	if err != nil {
 		log.WithError(err).Panicln("Failed to get OpenAPI docs")
 	}
+
 	options := oapiMiddleware.Options{
 		Options: openapi3filter.Options{
 			AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
@@ -157,7 +162,15 @@ func openApiValidatorMiddleware(includePaths ...string) gin.HandlerFunc {
 	if err != nil {
 		log.WithError(err).Panicln("Failed to create OpenAPI validator middleware")
 	}
+
 	return func(ctx *gin.Context) {
+		for _, path := range excludePaths {
+			if strings.HasPrefix(ctx.FullPath(), path) {
+				ctx.Next()
+				return
+			}
+		}
+
 		for _, path := range includePaths {
 			if strings.HasPrefix(ctx.FullPath(), path) {
 				validator(ctx)

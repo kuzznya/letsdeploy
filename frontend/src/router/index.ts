@@ -7,6 +7,8 @@ import NewServiceView from "@/views/NewServiceView.vue";
 import ServiceView from "@/views/ServiceView.vue";
 import NewManagedServiceView from "@/views/NewManagedServiceView.vue";
 import ManagedServiceView from "@/views/ManagedServiceView.vue";
+import ServiceConfigView from "@/views/ServiceConfigView.vue";
+import ServiceLogsView from "@/views/ServiceLogsView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -56,9 +58,23 @@ const router = createRouter({
     },
     {
       path: "/services/:id",
-      name: "service",
+      name: "service-parent",
       component: ServiceView,
-      props: (r) => ({ id: Number.parseInt(r.params.id as string) }),
+      props: (r) => ({
+        id: Number.parseInt(r.params.id as string),
+      }),
+      children: [
+        {
+          path: "",
+          name: "service",
+          component: ServiceConfigView,
+        },
+        {
+          path: "logs",
+          name: "serviceLogs",
+          component: ServiceLogsView,
+        },
+      ],
       meta: {
         secured: true,
       },

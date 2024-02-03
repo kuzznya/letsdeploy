@@ -9,6 +9,7 @@ import (
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"io"
 	v1 "k8s.io/api/core/v1"
 	networkingV1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +36,7 @@ type Services interface {
 	GetServiceEnvVars(id int, auth middleware.Authentication) ([]openapi.EnvVar, error)
 	SetServiceEnvVar(ctx context.Context, serviceId int, envVar openapi.EnvVar, auth middleware.Authentication) (*openapi.EnvVar, error)
 	DeleteServiceEnvVar(ctx context.Context, serviceId int, envVarName string, auth middleware.Authentication) error
+	StreamServiceLogs(ctx context.Context, serviceId int, auth middleware.Authentication) (io.Reader, error)
 }
 
 type servicesImpl struct {
@@ -364,6 +366,45 @@ func (s servicesImpl) DeleteServiceEnvVar(ctx context.Context, serviceId int, en
 	return nil
 }
 
+func (s servicesImpl) StreamServiceLogs(ctx context.Context, serviceId int, auth middleware.Authentication) (io.Reader, error) {
+	service, err := s.GetService(serviceId, auth)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find service by id")
+	}
+
+	list, err := s.clientset.CoreV1().Pods(service.Project).List(ctx, metav1.ListOptions{LabelSelector: "app=" + service.Name})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find a pod for service "+service.Name)
+	}
+	if len(list.Items) == 0 {
+		return nil, apperrors.InternalServerError("failed to find a pod for service " + service.Name)
+	}
+
+	newestPod := list.Items[0]
+	for _, pod := range list.Items {
+		if pod.CreationTimestamp.After(newestPod.CreationTimestamp.Time) {
+			newestPod = pod
+		}
+	}
+
+	req := s.clientset.CoreV1().Pods(service.Project).GetLogs(newestPod.Name, &v1.PodLogOptions{Follow: true})
+	logs, err := req.Stream(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to open logs stream")
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Debugf("Log stream is closed")
+		_ = logs.Close()
+		// TODO 02/02/2024: check if this handling is valid
+	}()
+
+	log.Debugf("Log stream for service %s is opened", service.Name)
+
+	return logs, nil
+}
+
 func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openapi.Service) error {
 	if err := s.createK8sService(ctx, service); err != nil {
 		return err
@@ -425,7 +466,7 @@ func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openap
 func (s servicesImpl) createK8sService(ctx context.Context, service openapi.Service) error {
 	port := applyConfigsCoreV1.ServicePort().
 		WithPort(80).
-		WithTargetPort(intstr.FromInt(service.Port))
+		WithTargetPort(intstr.FromInt32(int32(service.Port)))
 	svc := applyConfigsCoreV1.Service(service.Name, service.Project).
 		WithLabels(map[string]string{
 			"letsdeploy.space/managed":      "true",

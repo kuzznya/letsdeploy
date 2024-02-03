@@ -2,6 +2,8 @@ postgres:
   host: localhost:5432
   username: postgres
   database: postgres
+redis:
+  host: localhost:6379
 migrations:
   path: migrations
 log:

@@ -147,6 +147,8 @@ spec:
                 secretKeyRef:
                   name: letsdeploy-secrets
                   key: POSTGRES_PASSWORD
+            - name: REDIS_HOST
+              value: redis:6379
             - name: KUBERNETES_IN_CLUSTER
               value: "true"
           livenessProbe:

@@ -23,7 +23,7 @@ class DarkMode {
     document.documentElement.className = this.enabled.value ? "dark" : "light";
   }
 
-  asComputed = () => computed(() => useDarkMode().isEnabled().value);
+  asComputed = () => computed(() => this.isEnabled().value);
 }
 
 const manager = new DarkMode();
