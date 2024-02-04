@@ -389,7 +389,7 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 		if !contains(secretsMap, k8sSecret.Name) {
 			err := p.clientset.CoreV1().Secrets(projectId).Delete(ctx, k8sSecret.Name, metav1.DeleteOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
-				log.WithError(err).Errorln("Failed to delete secret %s, skipping", k8sSecret.Name)
+				log.WithError(err).Errorf("Failed to delete secret %s, skipping", k8sSecret.Name)
 			}
 		}
 	}
