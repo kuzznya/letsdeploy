@@ -177,7 +177,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 	updated := storage.ServiceEntity{
 		Id:              *service.Id,
 		ProjectId:       retrieved.Project,
-		Name:            service.Name,
+		Name:            retrieved.Name, // User cannot change service name
 		Image:           service.Image,
 		Port:            service.Port,
 		PublicApiPrefix: toNullString(service.PublicApiPrefix),
@@ -484,6 +484,10 @@ func (s servicesImpl) createK8sService(ctx context.Context, service openapi.Serv
 
 func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service) error {
 	if service.PublicApiPrefix == nil {
+		err := s.deleteIngress(ctx, service.Project, service.Name)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to delete ingress for service %s of project %s", service.Name, service.Project)
+		}
 		return nil
 	}
 	backend := applyConfigsNetworkingV1.IngressBackend().
@@ -505,7 +509,7 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule))
 	_, err := s.clientset.NetworkingV1().Ingresses(service.Project).Apply(ctx, ingress, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
-		return errors.Wrap(err, "failed to create Ingress for service")
+		return errors.Wrap(err, "failed to create Ingress for service "+service.Name)
 	}
 	return nil
 }
@@ -522,7 +526,7 @@ func (s servicesImpl) deleteServiceDeployment(ctx context.Context, project strin
 	}
 
 	err = s.deleteIngress(ctx, project, service)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err != nil {
 		log.WithError(err).Errorf("Failed to delete ingress %s after deleting service deployment in namespace %s\n", service, project)
 	}
 	return nil

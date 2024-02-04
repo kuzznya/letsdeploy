@@ -24,6 +24,9 @@ const imageEditEnabled = ref(false);
 const port = ref(props.service.port);
 const portEditEnabled = ref(false);
 
+const publicApiPrefix = ref(props.service.publicApiPrefix || "");
+const publicApiPrefixEditEnabled = ref(false);
+
 type EnvVarType = "value" | "secret";
 
 interface TypedEnvVar extends EnvVar {
@@ -97,6 +100,24 @@ async function updatePort() {
   portEditEnabled.value = false;
   try {
     await updateService((s) => (s.port = newPort));
+  } catch (e) {
+    error.value = e instanceof Error ? e : (e as string);
+  }
+}
+
+function formatApiPrefix(value: string, event: Event): string {
+  const input = event.target as HTMLInputElement;
+  const formatted = /^(\/[A-Za-z0-9-_.]*)+/.exec(value)?.[0] ?? "";
+  input.value = formatted;
+  return formatted;
+}
+
+async function updateApiPrefix() {
+  const newApiPrefix =
+    publicApiPrefix.value.length > 0 ? publicApiPrefix.value : undefined;
+  publicApiPrefixEditEnabled.value = false;
+  try {
+    await updateService((s) => (s.publicApiPrefix = newApiPrefix));
   } catch (e) {
     error.value = e instanceof Error ? e : (e as string);
   }
@@ -187,7 +208,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
   <b-container>
     <b-row class="fs-5">
       <b-col>
-        Image:
+        <label>Image:</label>
         <span v-if="imageEditEnabled">
           <b-form-input
             v-model="image"
@@ -237,7 +258,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
 
     <b-row class="mt-3 fs-5">
       <b-col>
-        Port:
+        <label>Port:</label>
         <span v-if="portEditEnabled">
           <b-form-input
             v-model="port"
@@ -283,6 +304,62 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
             class="ms-2"
             size="sm"
             @click="portEditEnabled = true"
+          >
+            <i class="bi bi-pencil" />
+          </b-button>
+        </span>
+      </b-col>
+    </b-row>
+
+    <b-row class="mt-3 fs-5">
+      <b-col>
+        <label>Public API prefix:</label>
+        <span v-if="publicApiPrefixEditEnabled">
+          <b-form-input
+            v-model="publicApiPrefix"
+            :formatter="formatApiPrefix"
+            placeholder="No public access"
+            class="d-inline w-auto ms-2 font-monospace"
+          />
+
+          <b-button
+            :disabled="
+              publicApiPrefix == service.publicApiPrefix ||
+              (publicApiPrefix.length == 0 && !service.publicApiPrefix)
+            "
+            :variant="darkModeEnabled ? 'light' : 'dark'"
+            class="ms-2"
+            size="sm"
+            @click="updateApiPrefix"
+          >
+            <i class="bi bi-check-lg" />
+          </b-button>
+
+          <b-button
+            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            class="ms-2"
+            size="sm"
+            @click="publicApiPrefixEditEnabled = false"
+          >
+            <i class="bi bi-x-lg" />
+          </b-button>
+        </span>
+
+        <span v-else>
+          <span
+            :class="
+              darkModeEnabled ? 'bg-secondary text-light' : 'bg-light text-dark'
+            "
+            class="ms-2 p-1 font-monospace rounded"
+          >
+            {{ service.publicApiPrefix || "No public access" }}
+          </span>
+
+          <b-button
+            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            class="ms-2"
+            size="sm"
+            @click="publicApiPrefixEditEnabled = true"
           >
             <i class="bi bi-pencil" />
           </b-button>

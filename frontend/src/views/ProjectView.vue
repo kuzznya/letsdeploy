@@ -244,7 +244,7 @@ function cancelSecretCreation() {
             "
           >
             <b-row>
-              <b-col class="flex-grow-0 mt-2">
+              <b-col class="mt-2">
                 <b-card-title class="font-monospace">{{
                   service.name
                 }}</b-card-title>

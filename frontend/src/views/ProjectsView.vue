@@ -64,7 +64,19 @@ async function onProjectClick(id: string) {
   await router.push({ name: "project", params: { id: id } });
 }
 
-async function onDeleteClick(id: string) {
+const deleteProjectDialogEnabled = ref(false);
+const projectToDelete = ref<string | null>(null);
+
+function onDeleteProjectClicked(id: string) {
+  deleteProjectDialogEnabled.value = true;
+  projectToDelete.value = id;
+}
+
+async function deleteProject() {
+  if (projectToDelete.value == null) {
+    return;
+  }
+  const id = projectToDelete.value;
   try {
     await api.ProjectApi.deleteProject(id);
   } finally {
@@ -150,8 +162,8 @@ async function projectParticipants(id: string) {
             <b-col class="text-end">
               <b-button
                 class="mr-2"
-                variant="outline-light"
-                @click.stop="onDeleteClick(project.id)"
+                variant="outline-danger"
+                @click.stop="onDeleteProjectClicked(project.id)"
               >
                 <i class="bi bi-trash"></i>
               </b-button>
@@ -172,5 +184,20 @@ async function projectParticipants(id: string) {
         <p>Seems like you have no projects yet</p>
       </b-col>
     </b-row>
+
+    <b-modal
+      v-model="deleteProjectDialogEnabled"
+      :hide-header-close="true"
+      body-text-variant="black"
+      header-text-variant="black"
+      title="Delete service"
+      @ok="deleteProject"
+    >
+      <p>
+        Are you sure want to delete project
+        <span class="font-monospace">{{ projectToDelete }}</span
+        >?
+      </p>
+    </b-modal>
   </b-container>
 </template>
