@@ -409,6 +409,34 @@ paths:
         500:
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/services/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: GetServiceStatus
+      tags:
+        - service
+      summary: Get service status
+      responses:
+        200:
+          description: Service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatus'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/services/{id}/restart:
     parameters:
       - name: id
@@ -690,6 +718,21 @@ components:
         - image
         - port
         - envVars
+
+    ServiceStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum:
+            - available
+            - progressing
+            - unhealthy
+      required:
+        - id
+        - status
 
     ManagedService:
       type: object

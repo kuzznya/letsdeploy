@@ -1,9 +1,13 @@
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "@/api";
 import ErrorModal from "@/components/ErrorModal.vue";
-import { ManagedService, Service } from "@/api/generated";
+import {
+  ManagedService,
+  Service,
+  ServiceStatusStatusEnum,
+} from "@/api/generated";
 import { TypeImage, types } from "@/components/managedServices";
 import { useDarkMode } from "@/dark-mode";
 
@@ -23,6 +27,39 @@ const managedServicesMap = project.value.managedServices.reduce(
   (prev, cur) => Object.assign(prev, { [cur.id]: cur }),
   {}
 ) as { [id: number]: ManagedService };
+
+const serviceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>({});
+loadServiceStatuses();
+
+const serviceStatusRefresher = setInterval(() => loadServiceStatuses(), 10_000);
+
+onBeforeUnmount(() => clearInterval(serviceStatusRefresher));
+
+function getServiceStatus(id: number) {
+  return serviceStatuses.value[id] ?? "unknown";
+}
+
+function getServiceStatusVariant(id: number) {
+  const status = getServiceStatus(id);
+  switch (status) {
+    case ServiceStatusStatusEnum.Available:
+      return "success";
+    case ServiceStatusStatusEnum.Progressing:
+      return "warning";
+    case ServiceStatusStatusEnum.Unhealthy:
+      return "danger";
+    default:
+      return "warning";
+  }
+}
+
+function loadServiceStatuses() {
+  for (const service of project.value.services) {
+    api.ServiceApi.getServiceStatus(service.id)
+      .then((r) => r.data)
+      .then((status) => (serviceStatuses.value[status.id] = status.status));
+  }
+}
 
 const secrets = await loadSecrets().then((s) => ref(s));
 
@@ -166,8 +203,12 @@ function cancelSecretCreation() {
 
     <b-row>
       <p><b>Project domain: </b>
-        <b-link :href="`http://${project.id}.letsdeploy.space`" target="_blank" @click.stop="">
-          {{project.id}}.letsdeploy.space
+        <b-link
+          :href="`http://${project.id}.letsdeploy.space`"
+          target="_blank"
+          @click.stop=""
+        >
+          {{ project.id }}.letsdeploy.space
         </b-link>
       </p>
     </b-row>
@@ -252,7 +293,10 @@ function cancelSecretCreation() {
 
               <b-col class="text-end">
                 <b-button
-                  v-if="service.publicApiPrefix != null && service.publicApiPrefix.length > 0"
+                  v-if="
+                    service.publicApiPrefix != null &&
+                    service.publicApiPrefix.length > 0
+                  "
                   class="mx-1 mb-1"
                   :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
                   :href="`http://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
@@ -265,7 +309,12 @@ function cancelSecretCreation() {
                 <b-button
                   class="mx-1 mb-1"
                   :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
-                  @click.stop="router.push({ name: 'serviceLogs', params: { id: service.id } })"
+                  @click.stop="
+                    router.push({
+                      name: 'serviceLogs',
+                      params: { id: service.id },
+                    })
+                  "
                 >
                   <i class="bi bi-file-text"></i>
                 </b-button>
@@ -283,9 +332,19 @@ function cancelSecretCreation() {
             <b-row>
               <b-col>
                 <p>
-                  {{ service.image }}<br />Port {{ service.port
-                  }}<span class="ms-5">{{ service.publicApiPrefix ?? "" }}</span>
+                  {{ service.image }}<br />Port {{ service.port }}
+                  <span class="ms-5">
+                    {{ service.publicApiPrefix ?? "" }}
+                  </span>
                 </p>
+              </b-col>
+            </b-row>
+
+            <b-row>
+              <b-col>
+                <b-badge :variant="getServiceStatusVariant(service.id)">
+                  {{ getServiceStatus(service.id) }}
+                </b-badge>
               </b-col>
             </b-row>
           </b-card>

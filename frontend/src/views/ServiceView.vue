@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import api from "@/api";
-import { Service } from "@/api/generated";
+import { Service, ServiceStatusStatusEnum } from "@/api/generated";
 import { useDarkMode } from "@/dark-mode";
 import ServiceConfigView from "@/views/ServiceConfigView.vue";
 import ServiceLogsView from "@/views/ServiceLogsView.vue";
@@ -25,6 +25,33 @@ const service = await api.ServiceApi.getService(props.id)
   })
   .then((s) => ref(s));
 
+const serviceStatus = ref<ServiceStatusStatusEnum | "unknown">("unknown");
+loadServiceStatus();
+
+function loadServiceStatus() {
+  api.ServiceApi.getServiceStatus(props.id)
+    .then((r) => r.data)
+    .then((status) => (serviceStatus.value = status.status));
+}
+
+const serviceStatusRefresher = setInterval(() => loadServiceStatus(), 5_000);
+
+onBeforeUnmount(() => clearInterval(serviceStatusRefresher));
+
+const serviceStatusVariant = computed(() => {
+  const status = serviceStatus.value;
+  switch (status) {
+    case ServiceStatusStatusEnum.Available:
+      return "success";
+    case ServiceStatusStatusEnum.Progressing:
+      return "warning";
+    case ServiceStatusStatusEnum.Unhealthy:
+      return "danger";
+    default:
+      return "warning";
+  }
+});
+
 async function updateService(change: (s: Service) => void) {
   const s = copy(service.value);
   // @ts-ignore
@@ -36,10 +63,12 @@ async function updateService(change: (s: Service) => void) {
       s.envVars = s.envVars.sort((v1, v2) => v1.name.localeCompare(v2.name));
       return s;
     });
+  loadServiceStatus();
 }
 
 async function restartService() {
   await api.ServiceApi.restartService(props.id);
+  loadServiceStatus();
 }
 
 function copy<T>(value: T): T {
@@ -59,6 +88,17 @@ function copy<T>(value: T): T {
       <i class="bi bi-chevron-right mx-3" />
       <span class="text-nowrap">{{ service.name }}</span>
     </h2>
+
+    <b-row class="my-3">
+      <b-col>
+        <span>
+          <label>Status:</label>
+          <b-badge class="ms-1" :variant="serviceStatusVariant">
+            {{ serviceStatus }}
+          </b-badge>
+        </span>
+      </b-col>
+    </b-row>
 
     <b-row class="my-3">
       <b-col>

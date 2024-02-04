@@ -34,6 +34,7 @@ type Services interface {
 	GetService(id int, auth middleware.Authentication) (*openapi.Service, error)
 	UpdateService(ctx context.Context, service openapi.Service, auth middleware.Authentication) (*openapi.Service, error)
 	DeleteService(ctx context.Context, id int, auth middleware.Authentication) error
+	GetServiceStatus(ctx context.Context, id int, auth middleware.Authentication) (*openapi.ServiceStatus, error)
 	RestartService(ctx context.Context, id int, auth middleware.Authentication) error
 	GetServiceEnvVars(id int, auth middleware.Authentication) ([]openapi.EnvVar, error)
 	SetServiceEnvVar(ctx context.Context, serviceId int, envVar openapi.EnvVar, auth middleware.Authentication) (*openapi.EnvVar, error)
@@ -279,6 +280,63 @@ func (s servicesImpl) DeleteService(ctx context.Context, id int, auth middleware
 	}
 	log.Infof("Deleted service %s in project %s", service.Name, service.Project)
 	return nil
+}
+
+func (s servicesImpl) GetServiceStatus(ctx context.Context, id int, auth middleware.Authentication) (*openapi.ServiceStatus, error) {
+	service, err := s.GetService(id, auth)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get service by id")
+	}
+
+	deploy, err := s.clientset.AppsV1().Deployments(service.Project).Get(ctx, service.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get service deployment")
+	}
+
+	if deploy.Generation > deploy.Status.ObservedGeneration {
+		log.Debugf("Service %s generation is greater than observed generation, deployment is progressing", service.Name)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if deploy.Spec.Replicas != nil && deploy.Status.UpdatedReplicas < *deploy.Spec.Replicas {
+		log.Debugf("Service %s updated replicas is less than expected, deployment is progressing", service.Name)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if deploy.Status.Replicas > deploy.Status.UpdatedReplicas {
+		list, err := s.clientset.CoreV1().Pods(service.Project).List(ctx, metav1.ListOptions{LabelSelector: "app=" + service.Name})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find a pod for service "+service.Name)
+		}
+		if len(list.Items) == 0 {
+			return nil, apperrors.InternalServerError("failed to find a pod for service " + service.Name)
+		}
+
+		log.Debugf("Service %s old replicas are waiting termination", service.Name)
+
+		newestPod := list.Items[0]
+		for _, pod := range list.Items {
+			if pod.CreationTimestamp.After(newestPod.CreationTimestamp.Time) {
+				newestPod = pod
+			}
+		}
+
+		if len(newestPod.Status.ContainerStatuses) == 0 {
+			return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+		}
+
+		podState := newestPod.Status.ContainerStatuses[0].State
+		if podState.Waiting != nil && podState.Waiting.Reason == "CrashLoopBackOff" {
+			log.Debugf("Service %s pod %s is unhealthy", service.Name, newestPod.Name)
+			return &openapi.ServiceStatus{Id: id, Status: openapi.Unhealthy}, nil
+		}
+
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if deploy.Status.AvailableReplicas < deploy.Status.UpdatedReplicas {
+		log.Debugf("Service %s %d of %d updated replicas are available",
+			service.Name, deploy.Status.AvailableReplicas, deploy.Status.UpdatedReplicas)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	return &openapi.ServiceStatus{Id: id, Status: openapi.Available}, nil
 }
 
 func (s servicesImpl) RestartService(ctx context.Context, id int, auth middleware.Authentication) error {
