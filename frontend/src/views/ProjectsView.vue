@@ -2,8 +2,12 @@
 import api from "@/api";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useDarkMode } from "@/dark-mode";
 
 const router = useRouter();
+
+const darkMode = useDarkMode();
+const darkModeEnabled = darkMode.asComputed();
 
 type ProjectInfo = {
   id: string;
@@ -30,12 +34,17 @@ const newProjectName = ref("");
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement;
-  const formatted = /^[a-z0-9_-]{0,20}/.exec(value)?.[0] ?? "";
+  const formatted = /^[a-z0-9-]{0,20}/.exec(value)?.[0] ?? "";
   input.value = formatted;
   return formatted;
 }
 
-const nameEntered = computed(() => newProjectName.value.length >= 4);
+const nameEntered = computed(
+  () =>
+    newProjectName.value.length >= 4 &&
+    !newProjectName.value.startsWith("-") &&
+    !newProjectName.value.endsWith("-")
+);
 
 async function createProject() {
   try {
@@ -147,9 +156,10 @@ async function projectParticipants(id: string) {
     <b-row v-for="project in projects as ProjectInfo[]" :key="project.id">
       <b-col>
         <b-card
-          bg-variant="primary"
+          :bg-variant="darkModeEnabled ? 'dark' : 'light'"
+          border-variant="primary"
+          :text-variant="darkModeEnabled ? 'light' : 'dark'"
           class="my-2 b-card-clickable"
-          text-variant="light"
           @click="onProjectClick(project.id)"
         >
           <b-row>
@@ -170,8 +180,13 @@ async function projectParticipants(id: string) {
             </b-col>
           </b-row>
           <b-row>
-            <b-link :href="`http://${project.id}.letsdeploy.space`" target="_blank" @click.stop="">
-              {{project.id}}.letsdeploy.space
+            <b-link
+              :href="`http://${project.id}.letsdeploy.space`"
+              target="_blank"
+              @click.stop=""
+              class="w-auto"
+            >
+              {{ project.id }}.letsdeploy.space
             </b-link>
           </b-row>
           {{ project.participants }}

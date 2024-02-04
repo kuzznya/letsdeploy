@@ -134,7 +134,7 @@ const secretValue = ref("");
 
 function formatSecretName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement;
-  const formatted = /^[a-zA-Z0-9_-]{1,255}/.exec(value)?.[0] ?? "";
+  const formatted = /^[a-z0-9][a-z0-9-]{0,254}/.exec(value)?.[0] ?? "";
   input.value = formatted;
   return formatted;
 }
@@ -403,6 +403,8 @@ function cancelSecretCreation() {
           :formatter="formatSecretName"
           :state="
             secretName.length > 0 &&
+            !secretName.startsWith('-') &&
+            !secretName.endsWith('-') &&
             secrets.findIndex((e) => e.name === secretName) === -1
           "
           class="d-inline w-auto"
@@ -421,6 +423,8 @@ function cancelSecretCreation() {
         <b-button
           :disabled="
             secretName.length === 0 ||
+            secretName.startsWith('-') ||
+            secretName.endsWith('-') ||
             secrets.findIndex((e) => e.name === secretName) !== -1
           "
           :variant="darkModeEnabled ? 'light' : 'dark'"

@@ -18,13 +18,6 @@ const keycloak = useKeycloak();
         >
       </b-col>
     </b-row>
-    <b-row class="my-3">
-      <b-col>
-        <b-button style="max-width: 12rem" variant="outline-info"
-          >Create new project</b-button
-        >
-      </b-col>
-    </b-row>
   </b-container>
 
   <b-container v-else>

@@ -23,7 +23,7 @@ const error = ref<Error | string | null>(null);
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement;
-  const formatted = /^[a-z][-a-z0-9]{0,19}$/.exec(value)?.[0] ?? "";
+  const formatted = /^[a-z0-9][-a-z0-9]{0,19}$/.exec(value)?.[0] ?? "";
   input.value = formatted;
   return formatted;
 }
@@ -63,7 +63,7 @@ async function createManagedService() {
       id="name-input"
       v-model="name"
       :formatter="formatName"
-      :state="name.length >= 3"
+      :state="name.length >= 1 && !name.startsWith('-') && !name.endsWith('-')"
     />
 
     <b-row class="mt-3 text-center">
@@ -88,7 +88,9 @@ async function createManagedService() {
     <b-row class="mt-4 text-center">
       <b-col>
         <b-button
-          :disabled="name.length === 0"
+          :disabled="
+            name.length < 1 || name.startsWith('-') || name.endsWith('-')
+          "
           variant="info"
           @click="createManagedService"
         >

@@ -56,7 +56,7 @@ onUnmounted(() => clearInterval(secretsRefresher));
 
 function formatName(value: string, event: Event): string {
   const input = event.target as HTMLInputElement;
-  const formatted = /^[a-z][-a-z0-9]{0,19}/.exec(value)?.[0] ?? "";
+  const formatted = /^[a-z0-9][-a-z0-9]{0,19}/.exec(value)?.[0] ?? "";
   input.value = formatted;
   return formatted;
 }
@@ -174,7 +174,7 @@ async function createService() {
       id="name-input"
       v-model="name"
       :formatter="formatName"
-      :state="name.length >= 3"
+      :state="name.length >= 1 && !name.startsWith('-') && !name.endsWith('-')"
     />
 
     <label class="mt-3" for="image-input">Docker image:</label>
@@ -298,9 +298,12 @@ async function createService() {
       <b-col>
         <b-button
           :disabled="
-            name.length === 0 ||
+            name.length < 1 ||
+            name.startsWith('-') ||
+            name.endsWith('-') ||
             image.length === 0 ||
-            (port < 1 && port > 65535) ||
+            port < 1 ||
+            port > 65535 ||
             createInitiated
           "
           variant="info"
