@@ -540,7 +540,7 @@ function cancelSecretCreation() {
                       name: 'managedService',
                       params: { id: secret.managedService.id },
                     }"
-                    class="font-monospace link-light"
+                    class="font-monospace link-underline-dark"
                   >
                     {{ secret.managedService.name }}
                   </b-link>
