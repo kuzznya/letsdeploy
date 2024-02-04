@@ -38,6 +38,10 @@ async function updateService(change: (s: Service) => void) {
     });
 }
 
+async function restartService() {
+  await api.ServiceApi.restartService(props.id);
+}
+
 function copy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
@@ -59,7 +63,10 @@ function copy<T>(value: T): T {
     <b-row class="my-3">
       <b-col>
         <b-button
-          v-if="service.publicApiPrefix != null && service.publicApiPrefix.length > 0"
+          v-if="
+            service.publicApiPrefix != null &&
+            service.publicApiPrefix.length > 0
+          "
           class="mx-1 mb-1"
           :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
           :href="`http://${service.project}.letsdeploy.space${service.publicApiPrefix}`"
@@ -67,6 +74,14 @@ function copy<T>(value: T): T {
           @click.stop=""
         >
           Open service <i class="bi bi-box-arrow-up-right"></i>
+        </b-button>
+
+        <b-button
+          class="mx-1 mb-1"
+          variant="outline-danger"
+          @click="restartService"
+        >
+          Restart <i class="bi bi-arrow-clockwise"></i>
         </b-button>
       </b-col>
     </b-row>

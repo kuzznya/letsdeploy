@@ -40,6 +40,14 @@ func (s Server) DeleteService(ctx context.Context, request openapi.DeleteService
 	return openapi.DeleteService200Response{}, nil
 }
 
+func (s Server) RestartService(ctx context.Context, request openapi.RestartServiceRequestObject) (openapi.RestartServiceResponseObject, error) {
+	err := s.core.Services.RestartService(ctx, request.Id, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return openapi.RestartService200Response{}, nil
+}
+
 func (s Server) GetServiceEnvVars(ctx context.Context, request openapi.GetServiceEnvVarsRequestObject) (openapi.GetServiceEnvVarsResponseObject, error) {
 	envVars, err := s.core.Services.GetServiceEnvVars(request.Id, middleware.GetAuth(ctx))
 	if err != nil {

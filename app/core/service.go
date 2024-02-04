@@ -22,6 +22,7 @@ import (
 	applyConfigsNetworkingV1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"k8s.io/client-go/kubernetes"
 	"strings"
+	"time"
 )
 
 const containerName = "container-0"
@@ -33,6 +34,7 @@ type Services interface {
 	GetService(id int, auth middleware.Authentication) (*openapi.Service, error)
 	UpdateService(ctx context.Context, service openapi.Service, auth middleware.Authentication) (*openapi.Service, error)
 	DeleteService(ctx context.Context, id int, auth middleware.Authentication) error
+	RestartService(ctx context.Context, id int, auth middleware.Authentication) error
 	GetServiceEnvVars(id int, auth middleware.Authentication) ([]openapi.EnvVar, error)
 	SetServiceEnvVar(ctx context.Context, serviceId int, envVar openapi.EnvVar, auth middleware.Authentication) (*openapi.EnvVar, error)
 	DeleteServiceEnvVar(ctx context.Context, serviceId int, envVarName string, auth middleware.Authentication) error
@@ -174,6 +176,9 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 	if retrieved.Project != service.Project {
 		return nil, apperrors.BadRequest("Project field cannot be updated")
 	}
+	if retrieved.Name != service.Name {
+		return nil, apperrors.BadRequest("Name cannot be updated")
+	}
 	updated := storage.ServiceEntity{
 		Id:              *service.Id,
 		ProjectId:       retrieved.Project,
@@ -273,6 +278,28 @@ func (s servicesImpl) DeleteService(ctx context.Context, id int, auth middleware
 		return errors.Wrap(err, "failed to delete service")
 	}
 	log.Infof("Deleted service %s in project %s", service.Name, service.Project)
+	return nil
+}
+
+func (s servicesImpl) RestartService(ctx context.Context, id int, auth middleware.Authentication) error {
+	service, err := s.GetService(id, auth)
+	if err != nil {
+		return errors.Wrap(err, "failed to get service by id")
+	}
+
+	deploy, err := s.clientset.AppsV1().Deployments(service.Project).Get(ctx, service.Name, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to get service deployment")
+	}
+
+	if deploy.Spec.Template.ObjectMeta.Annotations == nil {
+		deploy.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	deploy.Spec.Template.ObjectMeta.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+	_, err = s.clientset.AppsV1().Deployments(service.Project).Update(ctx, deploy, metav1.UpdateOptions{FieldManager: "letsdeploy"})
+	if err != nil {
+		return errors.Wrap(err, "failed to update service deployment")
+	}
 	return nil
 }
 
