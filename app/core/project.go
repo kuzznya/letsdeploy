@@ -370,7 +370,8 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 			ManagedServiceId: secret.ManagedServiceId,
 			Name:             secret.Name,
 		}
-		config := applyConfigsV1.Secret(strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), projectId).
+		config := applyConfigsV1.Secret(strings.ToLower(secret.Name), projectId).
+			WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
 			WithStringData(map[string]string{secretKey: secret.Value})
 		_, err = p.clientset.CoreV1().Secrets(projectId).Apply(ctx, config, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 		if err != nil {
@@ -378,8 +379,20 @@ func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) erro
 		}
 	}
 
-	// TODO sync secrets both ways
-	log.Errorln("Secrets sync is not implemented fully!")
+	secretsMap := toMapSelf(secrets, func(s storage.SecretEntity) string { return s.Name })
+
+	k8sSecrets, err := p.clientset.CoreV1().Secrets(projectId).List(ctx, metav1.ListOptions{LabelSelector: "letsdeploy.space/managed=true"})
+	if err != nil {
+		return errors.Wrap(err, "failed to get K8s secrets")
+	}
+	for _, k8sSecret := range k8sSecrets.Items {
+		if !contains(secretsMap, k8sSecret.Name) {
+			err := p.clientset.CoreV1().Secrets(projectId).Delete(ctx, k8sSecret.Name, metav1.DeleteOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				log.WithError(err).Errorln("Failed to delete secret %s, skipping", k8sSecret.Name)
+			}
+		}
+	}
 
 	log.Debugf("Project %s checked, namespace exists or was created", projectId)
 	return nil
