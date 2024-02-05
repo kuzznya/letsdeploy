@@ -30,3 +30,11 @@ func (s Server) DeleteManagedService(ctx context.Context, request openapi.Delete
 	}
 	return openapi.DeleteManagedService200Response{}, nil
 }
+
+func (s Server) GetManagedServiceStatus(ctx context.Context, request openapi.GetManagedServiceStatusRequestObject) (openapi.GetManagedServiceStatusResponseObject, error) {
+	status, err := s.core.ManagedServices.GetManagedServiceStatus(ctx, request.Id, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return openapi.GetManagedServiceStatus200JSONResponse(*status), nil
+}

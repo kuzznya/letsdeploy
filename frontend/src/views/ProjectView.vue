@@ -59,6 +59,11 @@ function loadServiceStatuses() {
       .then((r) => r.data)
       .then((status) => (serviceStatuses.value[status.id] = status.status));
   }
+  for (const service of project.value.managedServices) {
+    api.ManagedServiceApi.getManagedServiceStatus(service.id)
+      .then((r) => r.data)
+      .then((status) => (serviceStatuses.value[status.id] = status.status));
+  }
 }
 
 const secrets = await loadSecrets().then((s) => ref(s));
@@ -202,7 +207,8 @@ function cancelSecretCreation() {
     <h1 class="font-monospace text-center">{{ project.id }}</h1>
 
     <b-row>
-      <p><b>Project domain: </b>
+      <p>
+        <b>Project domain: </b>
         <b-link
           :href="`http://${project.id}.letsdeploy.space`"
           target="_blank"
@@ -419,8 +425,20 @@ function cancelSecretCreation() {
               </b-col>
             </b-row>
 
-            <type-image :font-size="5" :type="types[managedService.type]" />
-            <span class="ms-2">{{ types[managedService.type].name }}</span>
+            <b-row>
+              <b-col>
+                <type-image :font-size="5" :type="types[managedService.type]" />
+                <span class="ms-2">{{ types[managedService.type].name }}</span>
+              </b-col>
+            </b-row>
+
+            <b-row>
+              <b-col>
+                <b-badge :variant="getServiceStatusVariant(managedService.id)">
+                  {{ getServiceStatus(managedService.id) }}
+                </b-badge>
+              </b-col>
+            </b-row>
           </b-card>
         </b-col>
       </b-row>

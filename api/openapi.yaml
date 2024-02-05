@@ -618,6 +618,34 @@ paths:
         500:
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/managed_services/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: GetManagedServiceStatus
+      tags:
+        - managed_service
+      summary: Get managed service status
+      responses:
+        200:
+          description: Managed service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatus'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/tokens:
     post:
       operationId: CreateTempToken

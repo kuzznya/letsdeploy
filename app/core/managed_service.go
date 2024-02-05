@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
@@ -40,6 +41,7 @@ type ManagedServices interface {
 	CreateManagedService(ctx context.Context, service openapi.ManagedService, auth middleware.Authentication) (*openapi.ManagedService, error)
 	GetManagedService(id int, auth middleware.Authentication) (*openapi.ManagedService, error)
 	DeleteManagedService(ctx context.Context, id int, auth middleware.Authentication) error
+	GetManagedServiceStatus(ctx context.Context, id int, auth middleware.Authentication) (*openapi.ServiceStatus, error)
 }
 
 type managedServicesImpl struct {
@@ -146,6 +148,63 @@ func (m managedServicesImpl) DeleteManagedService(ctx context.Context, id int, a
 	}
 	log.Infof("Deleted managed service %s in project %s", entity.Name, entity.ProjectId)
 	return nil
+}
+
+func (m managedServicesImpl) GetManagedServiceStatus(ctx context.Context, id int, auth middleware.Authentication) (*openapi.ServiceStatus, error) {
+	service, err := m.GetManagedService(id, auth)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get managed service")
+	}
+
+	set, err := m.clientset.AppsV1().StatefulSets(service.Project).Get(ctx, service.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get managed service stateful set")
+	}
+
+	if set.Generation > set.Status.ObservedGeneration {
+		log.Debugf("Managed service %s generation is greater than observed generation, deployment is progressing", service.Name)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if set.Spec.Replicas != nil && set.Status.UpdatedReplicas < *set.Spec.Replicas {
+		log.Debugf("Managed service %s updated replicas is less than expected, deployment is progressing", service.Name)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if set.Status.Replicas > set.Status.UpdatedReplicas {
+		list, err := m.clientset.CoreV1().Pods(service.Project).List(ctx, metav1.ListOptions{LabelSelector: "app=" + service.Name})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find a pod for managed service "+service.Name)
+		}
+		if len(list.Items) == 0 {
+			return nil, apperrors.InternalServerError("failed to find a pod for managed service " + service.Name)
+		}
+
+		log.Debugf("Managed service %s old replicas are waiting termination", service.Name)
+
+		newestPod := list.Items[0]
+		for _, pod := range list.Items {
+			if pod.CreationTimestamp.After(newestPod.CreationTimestamp.Time) {
+				newestPod = pod
+			}
+		}
+
+		if len(newestPod.Status.ContainerStatuses) == 0 {
+			return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+		}
+
+		podState := newestPod.Status.ContainerStatuses[0].State
+		if podState.Waiting != nil && podState.Waiting.Reason == "CrashLoopBackOff" {
+			log.Debugf("Managed service %s pod %s is unhealthy", service.Name, newestPod.Name)
+			return &openapi.ServiceStatus{Id: id, Status: openapi.Unhealthy}, nil
+		}
+
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	if set.Status.AvailableReplicas < set.Status.UpdatedReplicas {
+		log.Debugf("Managed service %s %d of %d updated replicas are available",
+			service.Name, set.Status.AvailableReplicas, set.Status.UpdatedReplicas)
+		return &openapi.ServiceStatus{Id: id, Status: openapi.Progressing}, nil
+	}
+	return &openapi.ServiceStatus{Id: id, Status: openapi.Available}, nil
 }
 
 func (m managedServicesImpl) createManagedServiceDeployment(ctx context.Context, store *storage.Storage, service openapi.ManagedService) error {
@@ -259,6 +318,7 @@ func (m managedServicesImpl) createPasswordEnvVarSource(service openapi.ManagedS
 }
 
 func (m managedServicesImpl) createPostgresDeployment(ctx context.Context, service openapi.ManagedService) error {
+	portArg := fmt.Sprintf("--port=%d", managedServices[service.Type].podPort)
 	container := applyConfigsCoreV1.Container().
 		WithName(containerName).
 		WithImage(managedServices[service.Type].image).
@@ -266,7 +326,19 @@ func (m managedServicesImpl) createPostgresDeployment(ctx context.Context, servi
 		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().WithName("data").WithMountPath("/var/lib/postgresql")).
 		WithEnv(applyConfigsCoreV1.EnvVar().
 			WithName("POSTGRES_PASSWORD").
-			WithValueFrom(m.createPasswordEnvVarSource(service)))
+			WithValueFrom(m.createPasswordEnvVarSource(service))).
+		WithLivenessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("pg_isready", portArg)).
+			WithInitialDelaySeconds(20).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3)).
+		WithReadinessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("pg_isready", portArg)).
+			WithInitialDelaySeconds(30).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
@@ -295,17 +367,36 @@ func (m managedServicesImpl) createPostgresDeployment(ctx context.Context, servi
 }
 
 func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service openapi.ManagedService) error {
+	livenessCmd := fmt.Sprintf("mysqladmin -u%s -p$MYSQL_ROOT_PASSWORD ping",
+		managedServices[service.Type].username)
+	readinessCmd := fmt.Sprintf("mysql -h 127.0.0.1 -u%s -p$MYSQL_ROOT_PASSWORD -e 'SELECT 1'",
+		managedServices[service.Type].username)
+
 	container := applyConfigsCoreV1.Container().
 		WithName(containerName).
 		WithImage(managedServices[service.Type].image).
 		WithPorts(applyConfigsCoreV1.ContainerPort().WithContainerPort(int32(managedServices[service.Type].podPort))).
-		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().WithName("data").WithMountPath("/var/lib/postgresql")).
+		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().WithName("data").WithMountPath("/var/lib/mysql")).
 		WithEnv(applyConfigsCoreV1.EnvVar().
 			WithName("MYSQL_ROOT_PASSWORD").
 			WithValueFrom(m.createPasswordEnvVarSource(service)),
 			applyConfigsCoreV1.EnvVar().
 				WithName("MYSQL_DATABASE").
-				WithValue("db"))
+				WithValue("db")).
+		WithLivenessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", livenessCmd)).
+			WithInitialDelaySeconds(20).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3)).
+		WithReadinessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", readinessCmd)).
+			WithInitialDelaySeconds(30).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
@@ -334,6 +425,13 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 }
 
 func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service openapi.ManagedService) error {
+	livenessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password $MONGO_INITDB_ROOT_PASSWORD "+
+		"--eval 'db.runCommand({ping: 1})' --quiet",
+		managedServices[service.Type].username)
+	readinessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password $MONGO_INITDB_ROOT_PASSWORD "+
+		"--eval 'db.serverStatus().ok' --quiet | grep -q 1",
+		managedServices[service.Type].username)
+
 	container := applyConfigsCoreV1.Container().
 		WithName(containerName).
 		WithImage(managedServices[service.Type].image).
@@ -344,7 +442,21 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 			WithValueFrom(m.createPasswordEnvVarSource(service)),
 			applyConfigsCoreV1.EnvVar().
 				WithName("MONGO_INITDB_ROOT_USERNAME").
-				WithValue(managedServices[service.Type].username))
+				WithValue(managedServices[service.Type].username)).
+		WithLivenessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", livenessCmd)).
+			WithInitialDelaySeconds(20).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3)).
+		WithReadinessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", readinessCmd)).
+			WithInitialDelaySeconds(30).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
@@ -373,6 +485,9 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 }
 
 func (m managedServicesImpl) createRedisDeployment(ctx context.Context, service openapi.ManagedService) error {
+	livenessCmd := "redis-cli --pass $REDIS_PASSWORD ping | grep -q PONG"
+	readinessCmd := "redis-cli --pass $REDIS_PASSWORD ping | grep -q PONG"
+
 	container := applyConfigsCoreV1.Container().
 		WithName(containerName).
 		WithImage(managedServices[service.Type].image).
@@ -381,7 +496,21 @@ func (m managedServicesImpl) createRedisDeployment(ctx context.Context, service 
 		WithCommand("/bin/sh", "-c", "redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}").
 		WithEnv(applyConfigsCoreV1.EnvVar().
 			WithName("REDIS_PASSWORD").
-			WithValueFrom(m.createPasswordEnvVarSource(service)))
+			WithValueFrom(m.createPasswordEnvVarSource(service))).
+		WithLivenessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", livenessCmd)).
+			WithInitialDelaySeconds(20).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3)).
+		WithReadinessProbe(applyConfigsCoreV1.Probe().
+			WithExec(applyConfigsCoreV1.ExecAction().
+				WithCommand("/bin/sh", "-c", readinessCmd)).
+			WithInitialDelaySeconds(30).
+			WithPeriodSeconds(20).
+			WithTimeoutSeconds(5).
+			WithFailureThreshold(3))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
@@ -432,7 +561,7 @@ func (m managedServicesImpl) createRabbitMQDeployment(ctx context.Context, servi
 					applyConfigsCoreV1.ObjectFieldSelector().WithFieldPath("metadata.namespace"))),
 			applyConfigsCoreV1.EnvVar().WithName("RABBITMQ_USE_LONGNAME").WithValue("true"),
 			applyConfigsCoreV1.EnvVar().WithName("RABBITMQ_NODENAME").
-				WithValue("rabbit@$(HOSTNAME).rabbitmq.$(NAMESPACE).svc.cluster.local"),
+				WithValue("rabbit@$(HOSTNAME)."+service.Name+".$(NAMESPACE).svc.cluster.local"),
 			applyConfigsCoreV1.EnvVar().WithName("RABBITMQ_DEFAULT_USER").
 				WithValue(managedServices[service.Type].username),
 			applyConfigsCoreV1.EnvVar().WithName("RABBITMQ_DEFAULT_PASS").
@@ -441,15 +570,15 @@ func (m managedServicesImpl) createRabbitMQDeployment(ctx context.Context, servi
 				WithValue("secret_cookie_12345678"), // TODO refactor
 		).
 		WithLivenessProbe(applyConfigsCoreV1.Probe().
-			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("rabbitmq-diagnostics", "status")).
+			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("rabbitmq-diagnostics", "status", "--timeout", "10")).
 			WithInitialDelaySeconds(20).
-			WithPeriodSeconds(60).
+			WithPeriodSeconds(20).
 			WithTimeoutSeconds(15).
 			WithFailureThreshold(3)).
 		WithReadinessProbe(applyConfigsCoreV1.Probe().
-			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("rabbitmq-diagnostics", "ping")).
+			WithExec(applyConfigsCoreV1.ExecAction().WithCommand("rabbitmq-diagnostics", "ping", "--timeout", "10")).
 			WithInitialDelaySeconds(30).
-			WithPeriodSeconds(60).
+			WithPeriodSeconds(20).
 			WithTimeoutSeconds(10).
 			WithFailureThreshold(3))
 
