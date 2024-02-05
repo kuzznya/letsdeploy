@@ -36,7 +36,9 @@ const kcOptions: VueKeycloakOptions = {
     api.registerKeycloak(keycloak);
     routerGuard(keycloak);
     app.use(router);
-    app.mount("#app");
+    // workaround to clear URL fragments after redirect
+    // https://github.com/keycloak/keycloak/issues/14742#issuecomment-1313852174
+    router.isReady().then(() => app.mount("#app"));
   },
 };
 
