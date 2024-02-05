@@ -87,7 +87,8 @@ function createTerm() {
   term.loadAddon(fitAddon);
 
   term.open(termElement);
-  term.focus();
+
+  if (term.textarea) term.textarea.readOnly = true;
 
   fitAddon.fit();
 
