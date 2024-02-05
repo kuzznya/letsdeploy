@@ -309,7 +309,7 @@ function cancelSecretCreation() {
                   target="_blank"
                   @click.stop=""
                 >
-                  Open <i class="bi bi-box-arrow-up-right"></i>
+                  <i class="bi bi-box-arrow-up-right"></i>
                 </b-button>
 
                 <b-button
