@@ -1,0 +1,4 @@
+postgres:
+  password: postgres
+tls:
+  enabled: false

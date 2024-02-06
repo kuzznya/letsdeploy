@@ -43,7 +43,7 @@ func Start() {
 	rdb := redisclient.New(cfg)
 	clientset := setupK8sClientset(cfg)
 
-	c := core.New(store, rdb, clientset, chrono.NewDefaultTaskScheduler())
+	c := core.New(store, rdb, clientset, chrono.NewDefaultTaskScheduler(), cfg)
 	s := server.New(c)
 
 	r := gin.Default()
@@ -108,6 +108,16 @@ func setupConfig() *viper.Viper {
 	if err != nil {
 		msg := fmt.Errorf("fatal error reading config: %w", err)
 		log.Fatalln(msg)
+	}
+
+	profile := cfg.GetString("profile")
+	if profile != "" {
+		log.Infof("Run profile %s, loading config.%s.yaml if exists", profile, profile)
+		cfg.SetConfigName("config." + profile)
+		err = cfg.MergeInConfig()
+		if err != nil {
+			log.WithError(err).Warnf("Failed to read profile-specific config")
+		}
 	}
 
 	cfg.AutomaticEnv()

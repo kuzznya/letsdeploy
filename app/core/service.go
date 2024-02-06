@@ -9,6 +9,7 @@ import (
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"io"
 	v1 "k8s.io/api/core/v1"
 	networkingV1 "k8s.io/api/networking/v1"
@@ -46,6 +47,7 @@ type servicesImpl struct {
 	projects  Projects
 	storage   *storage.Storage
 	clientset *kubernetes.Clientset
+	cfg       *viper.Viper
 }
 
 var _ Services = (*servicesImpl)(nil)
@@ -54,8 +56,9 @@ func InitServices(
 	projects Projects,
 	storage *storage.Storage,
 	clientset *kubernetes.Clientset,
+	cfg *viper.Viper,
 ) Services {
-	s := servicesImpl{projects: projects, storage: storage, clientset: clientset}
+	s := servicesImpl{projects: projects, storage: storage, clientset: clientset, cfg: cfg}
 	return &s
 }
 
@@ -586,12 +589,22 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 	rule := applyConfigsNetworkingV1.IngressRule().
 		WithHost(service.Project + ".letsdeploy.space").
 		WithHTTP(applyConfigsNetworkingV1.HTTPIngressRuleValue().WithPaths(path))
+	tls := make([]*applyConfigsNetworkingV1.IngressTLSApplyConfiguration, 0)
+	if s.cfg.GetBool("tls.enabled") {
+		log.Debugf("TLS enabled, adding Ingress TLS config")
+		tls = append(tls, applyConfigsNetworkingV1.IngressTLS().
+			WithHosts(s.cfg.GetString("tls.hosts")))
+	}
 	ingress := applyConfigsNetworkingV1.Ingress(service.Name+"-ingress", service.Project).
 		WithLabels(map[string]string{
 			"letsdeploy.space/managed":      "true",
 			"letsdeploy.space/service-type": "service",
 		}).
-		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule))
+		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule).WithTLS(tls...))
+	if s.cfg.GetBool("tls.enabled") {
+		ingress.Labels["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+		ingress.Labels["traefik.ingress.kubernetes.io/router.tls"] = "true"
+	}
 	_, err := s.clientset.NetworkingV1().Ingresses(service.Project).Apply(ctx, ingress, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return errors.Wrap(err, "failed to create Ingress for service "+service.Name)

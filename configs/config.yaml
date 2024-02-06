@@ -8,6 +8,10 @@ migrations:
   path: migrations
 log:
   level: debug
+tls:
+  enabled: true
+  hosts: "*.letsdeploy.space"
+  secret: wildcard-letsdeploy-tls
 oidc:
   provider: https://auth.kuzznya.com/realms/letsdeploy
   username-claim: preferred_username

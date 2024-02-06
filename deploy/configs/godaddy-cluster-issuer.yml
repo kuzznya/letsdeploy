@@ -1,0 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-godaddy-prod
+spec:
+  acme:
+    email: ikuz2002@gmail.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: prod-issuer-account-key
+    solvers:
+      - selector:
+          dnsNames:
+            - '*.letsdeploy.space'
+        dns01:
+          webhook:
+            config:
+              apiKeySecretRef:
+                name: godaddy-api-key
+                key: token
+              production: true
+              ttl: 600
+            groupName: acme.letsdeploy.space
+            solverName: godaddy

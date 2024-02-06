@@ -6,6 +6,7 @@ import (
 	"github.com/kuzznya/letsdeploy/app/storage"
 	"github.com/kuzznya/letsdeploy/app/util/promise"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -25,10 +26,11 @@ func New(
 	rdb *redis.Client,
 	clientset *kubernetes.Clientset,
 	taskScheduler chrono.TaskScheduler,
+	cfg *viper.Viper,
 ) *Core {
 	corePromise := promise.New[Core]()
 	projects := InitProjects(storage, clientset, corePromise)
-	services := InitServices(projects, storage, clientset)
+	services := InitServices(projects, storage, clientset, cfg)
 	managedServices := InitManagedServices(projects, storage, clientset)
 	tokens := InitTokens(rdb)
 	core := &Core{
