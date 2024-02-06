@@ -372,6 +372,7 @@ func (p projectsImpl) createProjectNamespace(ctx context.Context, project openap
 
 func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) error {
 	cert := certManagerV1.Certificate{
+
 		ObjectMeta: metav1.ObjectMeta{
 			Name: project + "-tls",
 		},
@@ -385,9 +386,9 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 		},
 	}
 
-	_, err := p.cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{})
+	_, err := p.cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{FieldManager: "letsdeploy"})
 	if err != nil && apierrors.IsAlreadyExists(err) {
-		_, err = p.cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{})
+		_, err = p.cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{FieldManager: "letsdeploy"})
 		if err != nil {
 			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
 		}
