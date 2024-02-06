@@ -10,9 +10,7 @@ log:
   level: debug
 tls:
   enabled: true
-  hosts: "*.letsdeploy.space"
-  cluster-issuer: letsencrypt-godaddy-prod
-  secret: wildcard-letsdeploy-tls
+  cluster-issuer: letsencrypt-prod
 oidc:
   provider: https://auth.kuzznya.com/realms/letsdeploy
   username-claim: preferred_username
