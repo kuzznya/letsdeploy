@@ -3,6 +3,7 @@ package app
 import (
 	"codnect.io/chrono"
 	"fmt"
+	certManagerClientset "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-contrib/cors"
@@ -41,9 +42,9 @@ func Start() {
 	db := database.New(cfg)
 	store := storage.New(db)
 	rdb := redisclient.New(cfg)
-	clientset := setupK8sClientset(cfg)
+	clientset, cmClientset := setupK8sClientsets(cfg)
 
-	c := core.New(store, rdb, clientset, chrono.NewDefaultTaskScheduler(), cfg)
+	c := core.New(store, rdb, clientset, cmClientset, chrono.NewDefaultTaskScheduler(), cfg)
 	s := server.New(c)
 
 	r := gin.Default()
@@ -139,14 +140,14 @@ func configureLogging(cfg *viper.Viper) {
 	log.SetFormatter(formatter)
 }
 
-func setupK8sClientset(cfg *viper.Viper) *kubernetes.Clientset {
-	clienset := k8s.Setup(cfg)
+func setupK8sClientsets(cfg *viper.Viper) (*kubernetes.Clientset, *certManagerClientset.Clientset) {
+	clienset, cmClientset := k8s.Setup(cfg)
 	version, err := clienset.ServerVersion()
 	if err != nil {
 		log.WithError(err).Panicln("Kubernetes server version retrieval failed")
 	}
 	log.Infof("Kubernetes server version: %s\n", version.String())
-	return clienset
+	return clienset, cmClientset
 }
 
 func openApiValidatorMiddleware(includePaths []string, excludePaths []string) gin.HandlerFunc {

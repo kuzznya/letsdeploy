@@ -49,6 +49,7 @@ type projectsImpl struct {
 	managedServices ManagedServices
 	storage         *storage.Storage
 	clientset       *kubernetes.Clientset
+	cmClient        *certManagerClientset.Clientset
 	scheduler       chrono.TaskScheduler
 	cfg             *viper.Viper
 }
@@ -58,10 +59,11 @@ var _ Projects = (*projectsImpl)(nil)
 func InitProjects(
 	storage *storage.Storage,
 	clientset *kubernetes.Clientset,
+	cmClient *certManagerClientset.Clientset,
 	cfg *viper.Viper,
 	core promise.Promise[Core],
 ) Projects {
-	p := &projectsImpl{storage: storage, clientset: clientset, cfg: cfg}
+	p := &projectsImpl{storage: storage, clientset: clientset, cmClient: cmClient, cfg: cfg}
 	core.OnProvided(func(core Core) {
 		p.services = core.Services
 		p.managedServices = core.ManagedServices
@@ -383,10 +385,9 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 		},
 	}
 
-	cmClient := certManagerClientset.New(p.clientset.RESTClient())
-	_, err := cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{})
+	_, err := p.cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{})
 	if err != nil && apierrors.IsAlreadyExists(err) {
-		_, err = cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{})
+		_, err = p.cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{})
 		if err != nil {
 			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
 		}
@@ -394,15 +395,16 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create TLS certificate for project %s", project)
 	}
+	log.Debugf("Created TLS certificate for project %s", project)
 	return nil
 }
 
 func (p projectsImpl) deleteTlsCertificate(ctx context.Context, project string) error {
-	cmClient := certManagerClientset.New(p.clientset.RESTClient())
-	err := cmClient.CertmanagerV1().Certificates(project).Delete(ctx, project+"-tls", metav1.DeleteOptions{})
+	err := p.cmClient.CertmanagerV1().Certificates(project).Delete(ctx, project+"-tls", metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrapf(err, "failed to delete TLS certificate for project %s", project)
 	}
+	log.Debugf("Deleted TLS certificate for project %s", project)
 	return nil
 }
 

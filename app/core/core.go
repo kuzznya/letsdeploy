@@ -3,6 +3,7 @@ package core
 import (
 	"codnect.io/chrono"
 	"context"
+	certManagerClientset "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/kuzznya/letsdeploy/app/storage"
 	"github.com/kuzznya/letsdeploy/app/util/promise"
 	"github.com/redis/go-redis/v9"
@@ -25,11 +26,12 @@ func New(
 	storage *storage.Storage,
 	rdb *redis.Client,
 	clientset *kubernetes.Clientset,
+	cmClient *certManagerClientset.Clientset,
 	taskScheduler chrono.TaskScheduler,
 	cfg *viper.Viper,
 ) *Core {
 	corePromise := promise.New[Core]()
-	projects := InitProjects(storage, clientset, cfg, corePromise)
+	projects := InitProjects(storage, clientset, cmClient, cfg, corePromise)
 	services := InitServices(projects, storage, clientset, cfg)
 	managedServices := InitManagedServices(projects, storage, clientset)
 	tokens := InitTokens(rdb)

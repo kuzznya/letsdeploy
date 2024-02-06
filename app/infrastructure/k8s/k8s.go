@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	certManagerClientset "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
@@ -11,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-func Setup(cfg *viper.Viper) *kubernetes.Clientset {
+func Setup(cfg *viper.Viper) (*kubernetes.Clientset, *certManagerClientset.Clientset) {
 	isInCluster := cfg.GetBool("kubernetes.in-cluster")
 	var config *rest.Config
 	if isInCluster {
@@ -19,7 +20,7 @@ func Setup(cfg *viper.Viper) *kubernetes.Clientset {
 	} else {
 		config = outOfCluster(cfg)
 	}
-	return kubernetes.NewForConfigOrDie(config)
+	return kubernetes.NewForConfigOrDie(config), certManagerClientset.NewForConfigOrDie(config)
 }
 
 func inCluster() *rest.Config {
