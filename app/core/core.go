@@ -29,7 +29,7 @@ func New(
 	cfg *viper.Viper,
 ) *Core {
 	corePromise := promise.New[Core]()
-	projects := InitProjects(storage, clientset, corePromise)
+	projects := InitProjects(storage, clientset, cfg, corePromise)
 	services := InitServices(projects, storage, clientset, cfg)
 	managedServices := InitManagedServices(projects, storage, clientset)
 	tokens := InitTokens(rdb)

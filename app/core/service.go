@@ -604,7 +604,6 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		}).
 		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule).WithTLS(tls...))
 	if s.cfg.GetBool("tls.enabled") {
-		ingress.Labels["cert-manager.io/cluster-issuer"] = s.cfg.GetString("tls.cluster-issuer")
 		ingress.Labels["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
 		ingress.Labels["traefik.ingress.kubernetes.io/router.tls"] = "true"
 	}

@@ -4,6 +4,9 @@ import (
 	"codnect.io/chrono"
 	"context"
 	"fmt"
+	certManagerV1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	certManagerClientset "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
@@ -11,6 +14,7 @@ import (
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applyConfigsV1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -46,6 +50,7 @@ type projectsImpl struct {
 	storage         *storage.Storage
 	clientset       *kubernetes.Clientset
 	scheduler       chrono.TaskScheduler
+	cfg             *viper.Viper
 }
 
 var _ Projects = (*projectsImpl)(nil)
@@ -53,9 +58,10 @@ var _ Projects = (*projectsImpl)(nil)
 func InitProjects(
 	storage *storage.Storage,
 	clientset *kubernetes.Clientset,
+	cfg *viper.Viper,
 	core promise.Promise[Core],
 ) Projects {
-	p := &projectsImpl{storage: storage, clientset: clientset}
+	p := &projectsImpl{storage: storage, clientset: clientset, cfg: cfg}
 	core.OnProvided(func(core Core) {
 		p.services = core.Services
 		p.managedServices = core.ManagedServices
@@ -100,6 +106,13 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 		err = p.createProjectNamespace(ctx, project)
 		if err != nil {
 			return err
+		}
+
+		if p.cfg.GetBool("tls.enabled") {
+			err = p.createTlsCertificate(ctx, project.Id)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -355,10 +368,60 @@ func (p projectsImpl) createProjectNamespace(ctx context.Context, project openap
 	return nil
 }
 
+func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) error {
+	cert := certManagerV1.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: project + "-tls",
+		},
+		Spec: certManagerV1.CertificateSpec{
+			SecretName: project + "-tls",
+			DNSNames:   []string{project + ".letsdeploy.space"},
+			IssuerRef: v1.ObjectReference{
+				Kind: "ClusterIssuer",
+				Name: p.cfg.GetString("tls.cluster-issuer"),
+			},
+		},
+	}
+
+	cmClient := certManagerClientset.New(p.clientset.RESTClient())
+	_, err := cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{})
+	if err != nil && apierrors.IsAlreadyExists(err) {
+		_, err = cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
+		}
+	}
+	if err != nil {
+		return errors.Wrapf(err, "failed to create TLS certificate for project %s", project)
+	}
+	return nil
+}
+
+func (p projectsImpl) deleteTlsCertificate(ctx context.Context, project string) error {
+	cmClient := certManagerClientset.New(p.clientset.RESTClient())
+	err := cmClient.CertmanagerV1().Certificates(project).Delete(ctx, project+"-tls", metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrapf(err, "failed to delete TLS certificate for project %s", project)
+	}
+	return nil
+}
+
 func (p projectsImpl) syncKubernetes(ctx context.Context, projectId string) error {
 	err := p.createProjectNamespace(ctx, openapi.Project{Id: projectId})
 	if err != nil {
 		return errors.Wrap(err, "failed to create project namespace")
+	}
+
+	if p.cfg.GetBool("tls.enabled") {
+		err = p.createTlsCertificate(ctx, projectId)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create TLS certificate for project %s", projectId)
+		}
+	} else {
+		err = p.deleteTlsCertificate(ctx, projectId)
+		if err != nil {
+			return errors.Wrapf(err, "failed to delete TLS certificate for project %s", projectId)
+		}
 	}
 
 	secrets, err := p.storage.SecretRepository().FindByProjectId(projectId)
