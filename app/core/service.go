@@ -593,7 +593,9 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 	if s.cfg.GetBool("tls.enabled") {
 		log.Debugf("TLS enabled, adding Ingress TLS config")
 		tls = append(tls, applyConfigsNetworkingV1.IngressTLS().
-			WithHosts(s.cfg.GetString("tls.hosts")))
+			WithHosts(s.cfg.GetString("tls.hosts")).
+			WithSecretName("wildcard-letsdeploy-tls"),
+		)
 	}
 	ingress := applyConfigsNetworkingV1.Ingress(service.Name+"-ingress", service.Project).
 		WithLabels(map[string]string{
@@ -602,6 +604,7 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		}).
 		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule).WithTLS(tls...))
 	if s.cfg.GetBool("tls.enabled") {
+		ingress.Labels["cert-manager.io/cluster-issuer"] = s.cfg.GetString("tls.cluster-issuer")
 		ingress.Labels["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
 		ingress.Labels["traefik.ingress.kubernetes.io/router.tls"] = "true"
 	}
