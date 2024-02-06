@@ -22,6 +22,8 @@ const pingHandler = setInterval(() => ws?.send("ping"), 10_000);
 onBeforeUnmount(() => {
   clearInterval(pingHandler);
 
+  term?.dispose();
+
   if (ws == null) return;
   unmount = true;
   try {
@@ -81,12 +83,15 @@ function createTerm() {
       foreground: "#212529",
     },
     allowTransparency: true,
+    scrollSensitivity: 8,
   });
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
 
   term.open(termElement);
+
+  hideWidthCacheDiv();
 
   if (term.textarea) term.textarea.readOnly = true;
 
@@ -103,6 +108,19 @@ function createTerm() {
   };
   window.addEventListener("resize", onResize);
   onResize();
+}
+
+// workaround of issues that widthCache causes by creating very big element
+// which causes browser to render page with incorrect size, adding unnecessary scroll
+function hideWidthCacheDiv() {
+  const core = (term as any)._core;
+  const renderService = core?._renderService;
+  const renderer = renderService?._renderer?._value;
+  const widthCache = renderer?._widthCache;
+  const container = widthCache?._container as HTMLElement | null;
+  if (container) {
+    container.style.contentVisibility = "hidden";
+  }
 }
 
 function reconnect() {
@@ -126,7 +144,7 @@ await load().catch(() =>
         </div>
       </template>
 
-      <div id="terminal" />
+      <div id="terminal" class="xterm" />
     </b-overlay>
 
     <b-button @click="reconnect" class="mt-1" variant="outline-danger">
