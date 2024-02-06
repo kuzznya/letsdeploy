@@ -80,7 +80,8 @@ function createTerm() {
   term = new Terminal({
     theme: {
       background: "rgba(240, 240, 245, 0.8)",
-      foreground: "#212529",
+      foreground: "rgb(33,37,41)",
+      selectionBackground: "rgb(150, 150, 170)",
     },
     allowTransparency: true,
     scrollSensitivity: 8,
@@ -144,7 +145,7 @@ await load().catch(() =>
         </div>
       </template>
 
-      <div id="terminal" class="xterm" />
+      <div id="terminal" />
     </b-overlay>
 
     <b-button @click="reconnect" class="mt-1" variant="outline-danger">
