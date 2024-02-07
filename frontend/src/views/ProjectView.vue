@@ -236,7 +236,7 @@ function cancelSecretCreation() {
 
     <b-button
       v-if="inviteLinkVisible === false"
-      variant="primary"
+      variant="info"
       @click="inviteLinkVisible = true"
     >
       Invite
