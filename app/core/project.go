@@ -3,6 +3,7 @@ package core
 import (
 	"codnect.io/chrono"
 	"context"
+	"encoding/json"
 	"fmt"
 	certManagerV1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	applyConfigsV1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"strings"
@@ -372,7 +374,6 @@ func (p projectsImpl) createProjectNamespace(ctx context.Context, project openap
 
 func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) error {
 	cert := certManagerV1.Certificate{
-
 		ObjectMeta: metav1.ObjectMeta{
 			Name: project + "-tls",
 		},
@@ -388,7 +389,13 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 
 	_, err := p.cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{FieldManager: "letsdeploy"})
 	if err != nil && apierrors.IsAlreadyExists(err) {
-		_, err = p.cmClient.CertmanagerV1().Certificates(project).Update(ctx, &cert, metav1.UpdateOptions{FieldManager: "letsdeploy"})
+		patchOpts := metav1.ApplyOptions{FieldManager: "letsdeploy"}.ToPatchOptions()
+		body, err := json.Marshal(&cert)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
+		}
+		name := cert.Name
+		_, err = p.cmClient.CertmanagerV1().Certificates(project).Patch(ctx, name, types.ApplyPatchType, body, patchOpts)
 		if err != nil {
 			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
 		}
