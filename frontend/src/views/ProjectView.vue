@@ -204,14 +204,7 @@ function cancelSecretCreation() {
 
 <template>
   <b-container>
-    <h2 class="font-monospace text-center">
-      <span class="text-nowrap">
-        <b-link :to="{ name: 'projects' }" class="link-primary"
-          >Projects</b-link
-        >
-        <i class="bi bi-chevron-right mx-3" />{{ project.id }}
-      </span>
-    </h2>
+    <h1 class="font-monospace text-center">{{ project.id }}</h1>
 
     <b-row>
       <p>
