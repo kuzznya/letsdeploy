@@ -3,13 +3,10 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "@/api";
 import { ManagedServiceTypeEnum } from "@/api/generated";
-import { useDarkMode } from "@/dark-mode";
 import ErrorModal from "@/components/ErrorModal.vue";
 import { TypeImage, types } from "@/components/managedServices";
 
 const router = useRouter();
-
-const darkModeEnabled = useDarkMode().asComputed();
 
 const props = defineProps<{
   project: string;
@@ -47,7 +44,7 @@ async function createManagedService() {
   <b-container>
     <h2 class="font-monospace text-center mb-3">
       <b-link
-        :class="darkModeEnabled ? 'link-light' : 'link-dark'"
+        class="link-primary"
         :to="{ name: 'project', params: { id: project } }"
       >
         {{ project }}
@@ -91,7 +88,7 @@ async function createManagedService() {
           :disabled="
             name.length < 1 || name.startsWith('-') || name.endsWith('-')
           "
-          variant="info"
+          variant="primary"
           @click="createManagedService"
         >
           Create
@@ -99,7 +96,7 @@ async function createManagedService() {
         <b-button
           :to="{ name: 'project', params: { id: project } }"
           class="ms-2"
-          variant="outline-info"
+          variant="outline-secondary"
         >
           Cancel
         </b-button>

@@ -13,9 +13,10 @@ const keycloak = useKeycloak();
         <b-button
           :to="{ name: 'projects' }"
           style="max-width: 12rem"
-          variant="info"
-          >Explore projects</b-button
+          variant="primary"
         >
+          Explore projects
+        </b-button>
       </b-col>
     </b-row>
   </b-container>

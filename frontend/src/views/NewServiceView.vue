@@ -3,13 +3,9 @@ import { onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "@/api";
 import { EnvVar } from "@/api/generated";
-import { useDarkMode } from "@/dark-mode";
 import ErrorModal from "@/components/ErrorModal.vue";
 
 const router = useRouter();
-
-const darkMode = useDarkMode();
-const darkModeEnabled = darkMode.asComputed();
 
 const props = defineProps<{
   project: string;
@@ -158,7 +154,7 @@ async function createService() {
   <b-container>
     <h2 class="font-monospace text-center mb-3">
       <b-link
-        :class="darkModeEnabled ? 'link-light' : 'link-dark'"
+        class="link-primary"
         :to="{ name: 'project', params: { id: project } }"
       >
         {{ project }}
@@ -208,7 +204,7 @@ async function createService() {
       <b-row>
         <b-col>
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="me-1"
             size="sm"
             @click.stop="deleteEnvVar(envVar.name)"
@@ -217,7 +213,7 @@ async function createService() {
           </b-button>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="me-3"
             size="sm"
             @click.stop="editEnvVar(envVar.name)"
@@ -286,7 +282,7 @@ async function createService() {
           :disabled="!validateEnvVar(newEnvVar)"
           class="d-inline ms-2"
           size="sm"
-          variant="outline-info"
+          variant="outline-secondary"
           @click="addEnvVar"
         >
           <i class="bi bi-plus" />
@@ -306,7 +302,7 @@ async function createService() {
             port > 65535 ||
             createInitiated
           "
-          variant="info"
+          variant="primary"
           @click="createService"
         >
           Create
@@ -314,7 +310,7 @@ async function createService() {
         <b-button
           :to="{ name: 'project', params: { id: project } }"
           class="ms-2"
-          variant="outline-info"
+          variant="outline-secondary"
         >
           Cancel
         </b-button>

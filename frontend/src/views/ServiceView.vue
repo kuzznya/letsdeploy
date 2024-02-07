@@ -2,14 +2,9 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 import api from "@/api";
 import { Service, ServiceStatusStatusEnum } from "@/api/generated";
-import { useDarkMode } from "@/dark-mode";
 import ServiceConfigView from "@/views/ServiceConfigView.vue";
 import ServiceLogsView from "@/views/ServiceLogsView.vue";
 import { useRouter } from "vue-router";
-
-const darkMode = useDarkMode();
-
-const darkModeEnabled = darkMode.asComputed();
 
 const props = defineProps<{
   id: number;
@@ -80,7 +75,7 @@ function copy<T>(value: T): T {
   <b-container>
     <h2 class="font-monospace text-center mb-3">
       <b-link
-        :class="darkModeEnabled ? 'link-light' : 'link-dark'"
+        class="link-primary"
         :to="{ name: 'project', params: { id: service.project } }"
       >
         {{ service.project }}
@@ -108,7 +103,7 @@ function copy<T>(value: T): T {
             service.publicApiPrefix.length > 0
           "
           class="mx-1 mb-1"
-          :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+          variant="outline-secondary"
           :href="`http://${service.project}.letsdeploy.space${service.publicApiPrefix}`"
           target="_blank"
           @click.stop=""

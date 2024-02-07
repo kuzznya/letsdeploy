@@ -123,7 +123,7 @@ async function projectParticipants(id: string) {
     <b-button
       v-if="!newProjectInputEnabled"
       class="mb-3"
-      variant="info"
+      variant="primary"
       @click="newProjectInputEnabled = true"
     >
       New project
@@ -141,13 +141,13 @@ async function projectParticipants(id: string) {
       <b-button
         :disabled="!nameEntered"
         class="d-inline mx-1"
-        variant="info"
+        variant="primary"
         @click="createProject"
         >Create</b-button
       >
       <b-button
         class="d-inline mx-1"
-        variant="outline-info"
+        variant="outline-secondary"
         @click="newProjectInputEnabled = false"
         >Cancel</b-button
       >

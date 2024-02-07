@@ -52,7 +52,7 @@ const serviceStatusVariant = computed(() => {
   <b-container>
     <h2 class="font-monospace text-center mb-3">
       <b-link
-        :class="darkModeEnabled ? 'link-light' : 'link-dark'"
+        class="link-primary"
         :to="{ name: 'project', params: { id: service.project } }"
       >
         {{ service.project }}

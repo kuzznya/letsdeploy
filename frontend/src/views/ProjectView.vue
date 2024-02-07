@@ -236,7 +236,7 @@ function cancelSecretCreation() {
 
     <b-button
       v-if="inviteLinkVisible === false"
-      variant="info"
+      variant="primary"
       @click="inviteLinkVisible = true"
     >
       Invite
@@ -274,7 +274,7 @@ function cancelSecretCreation() {
       <b-button
         :to="{ name: 'newService', params: { project: project.id } }"
         class="mb-3"
-        variant="info"
+        variant="primary"
       >
         New
       </b-button>
@@ -304,7 +304,7 @@ function cancelSecretCreation() {
                     service.publicApiPrefix.length > 0
                   "
                   class="mx-1 mb-1"
-                  :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+                  variant="outline-secondary"
                   :href="`http://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
                   target="_blank"
                   @click.stop=""
@@ -314,7 +314,7 @@ function cancelSecretCreation() {
 
                 <b-button
                   class="mx-1 mb-1"
-                  :variant="darkModeEnabled ? 'outline-light' : 'outline-dark'"
+                  variant="outline-secondary"
                   @click.stop="
                     router.push({
                       name: 'serviceLogs',
@@ -385,7 +385,7 @@ function cancelSecretCreation() {
       <b-button
         :to="{ name: 'newManagedService', params: { project: project.id } }"
         class="mb-3"
-        variant="info"
+        variant="primary"
       >
         New
       </b-button>
@@ -468,7 +468,7 @@ function cancelSecretCreation() {
       <b-button
         v-if="!secretCreationEnabled"
         class="mb-3"
-        variant="info"
+        variant="primary"
         @click="secretCreationEnabled = true"
       >
         New
@@ -513,7 +513,7 @@ function cancelSecretCreation() {
         </b-button>
 
         <b-button
-          :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+          variant="outline-secondary"
           class="ms-2"
           size="sm"
           @click="cancelSecretCreation"

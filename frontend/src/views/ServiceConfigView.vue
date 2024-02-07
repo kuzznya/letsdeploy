@@ -226,7 +226,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </b-button>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="imageEditEnabled = false"
@@ -245,7 +245,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
             {{ service.image }}
           </span>
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="imageEditEnabled = true"
@@ -280,7 +280,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </b-button>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="portEditEnabled = false"
@@ -300,7 +300,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </span>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="portEditEnabled = true"
@@ -336,7 +336,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </b-button>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="publicApiPrefixEditEnabled = false"
@@ -356,7 +356,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </span>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="ms-2"
             size="sm"
             @click="publicApiPrefixEditEnabled = true"
@@ -379,7 +379,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
     </b-button>
     <b-button
       v-if="areEnvVarsEdited"
-      :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+      variant="outline-secondary"
       class="ms-2"
       size="sm"
       @click="resetEnvVars"
@@ -390,7 +390,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
       <b-row>
         <b-col>
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="me-1"
             size="sm"
             @click.stop="deleteEnvVar(envVar.name)"
@@ -399,7 +399,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           </b-button>
 
           <b-button
-            :variant="darkModeEnabled ? 'outline-light' : 'outline-secondary'"
+            variant="outline-secondary"
             class="me-3"
             size="sm"
             @click.stop="editEnvVar(envVar.name)"
@@ -468,7 +468,7 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
           :disabled="!validateEnvVar(newEnvVar)"
           class="d-inline ms-2"
           size="sm"
-          variant="outline-info"
+          variant="outline-secondary"
           @click="addEnvVar"
         >
           <i class="bi bi-plus" />
