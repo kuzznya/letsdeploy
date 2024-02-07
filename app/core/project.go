@@ -374,6 +374,10 @@ func (p projectsImpl) createProjectNamespace(ctx context.Context, project openap
 
 func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) error {
 	cert := certManagerV1.Certificate{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: certManagerV1.SchemeGroupVersion.Identifier(),
+			Kind:       certManagerV1.CertificateKind,
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: project + "-tls",
 		},
