@@ -391,18 +391,15 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 		},
 	}
 
-	_, err := p.cmClient.CertmanagerV1().Certificates(project).Create(ctx, &cert, metav1.CreateOptions{FieldManager: "letsdeploy"})
-	if err != nil && apierrors.IsAlreadyExists(err) {
-		patchOpts := metav1.ApplyOptions{FieldManager: "letsdeploy"}.ToPatchOptions()
-		body, err := json.Marshal(&cert)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
-		}
-		name := cert.Name
-		_, err = p.cmClient.CertmanagerV1().Certificates(project).Patch(ctx, name, types.ApplyPatchType, body, patchOpts)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update TLS certificate for project %s", project)
-		}
+	patchOpts := metav1.ApplyOptions{FieldManager: "letsdeploy"}.ToPatchOptions()
+	body, err := json.Marshal(&cert)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create/update TLS certificate for project %s", project)
+	}
+	name := cert.Name
+	_, err = p.cmClient.CertmanagerV1().Certificates(project).Patch(ctx, name, types.ApplyPatchType, body, patchOpts)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create/update TLS certificate for project %s", project)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "failed to create TLS certificate for project %s", project)
