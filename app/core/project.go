@@ -401,9 +401,6 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create/update TLS certificate for project %s", project)
 	}
-	if err != nil {
-		return errors.Wrapf(err, "failed to create TLS certificate for project %s", project)
-	}
 	log.Debugf("Created TLS certificate for project %s", project)
 	return nil
 }
