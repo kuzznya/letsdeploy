@@ -181,7 +181,7 @@ async function projectParticipants(id: string) {
           </b-row>
           <b-row>
             <b-link
-              :href="`http://${project.id}.letsdeploy.space`"
+              :href="`https://${project.id}.letsdeploy.space`"
               target="_blank"
               @click.stop=""
               class="w-auto"

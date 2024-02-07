@@ -104,7 +104,7 @@ function copy<T>(value: T): T {
           "
           class="mx-1 mb-1"
           variant="outline-secondary"
-          :href="`http://${service.project}.letsdeploy.space${service.publicApiPrefix}`"
+          :href="`https://${service.project}.letsdeploy.space${service.publicApiPrefix}`"
           target="_blank"
           @click.stop=""
         >

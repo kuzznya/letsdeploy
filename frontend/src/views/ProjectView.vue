@@ -210,7 +210,7 @@ function cancelSecretCreation() {
       <p>
         <b>Project domain: </b>
         <b-link
-          :href="`http://${project.id}.letsdeploy.space`"
+          :href="`https://${project.id}.letsdeploy.space`"
           target="_blank"
           @click.stop=""
         >
@@ -305,7 +305,7 @@ function cancelSecretCreation() {
                   "
                   class="mx-1 mb-1"
                   variant="outline-secondary"
-                  :href="`http://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
+                  :href="`https://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
                   target="_blank"
                   @click.stop=""
                 >
