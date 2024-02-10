@@ -110,6 +110,13 @@ async function copyInviteLink() {
   await navigator.clipboard.writeText(inviteLink.value);
 }
 
+async function regenerateInviteCode() {
+  const response = await api.ProjectApi.regenerateInviteCode(props.id).then(
+    (r) => r.data
+  );
+  project.value.inviteCode = response.inviteCode;
+}
+
 type TypedService =
   | { service: Service; type: "Service" }
   | { service: ManagedService; type: "ManagedService" };
@@ -243,7 +250,7 @@ function cancelSecretCreation() {
     </b-button>
     <span v-else>
       <div
-        class="overflow-scroll text-nowrap d-inline-flex"
+        class="overflow-x-auto text-nowrap d-inline-flex"
         style="max-width: 75%; white-space: nowrap"
       >
         <b-link
@@ -255,7 +262,7 @@ function cancelSecretCreation() {
           {{ inviteLink }}
         </b-link>
       </div>
-      <b-button class="ms-2" size="sm" variant="light" @click="copyInviteLink">
+      <b-button class="ms-1" size="sm" variant="light" @click="copyInviteLink">
         <i class="bi bi-clipboard" />
       </b-button>
       <b-button
@@ -265,6 +272,14 @@ function cancelSecretCreation() {
         @click="inviteLinkVisible = false"
       >
         <i class="bi bi-check-lg" />
+      </b-button>
+      <b-button
+        class="ms-2"
+        size="sm"
+        variant="outline-danger"
+        @click="regenerateInviteCode"
+      >
+        <i class="bi bi-arrow-clockwise" />
       </b-button>
     </span>
 

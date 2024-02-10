@@ -190,6 +190,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'
+
   /api/v1/projects/invitations/{invite_code}:
     parameters:
       - name: invite_code
@@ -213,6 +214,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         404:
           description: Project with this invite code not found
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/invitations/regenerate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{2,18}[a-z0-9]$
+    post:
+      operationId: RegenerateInviteCode
+      tags:
+        - project
+      summary: Regenerate invite code
+      responses:
+        200:
+          description: New invite code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inviteCode:
+                    type: string
+                required:
+                  - inviteCode
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
           $ref: '#/components/responses/NotFound'
         500:
           $ref: '#/components/responses/InternalServerError'

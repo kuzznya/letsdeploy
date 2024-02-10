@@ -8,6 +8,7 @@ import (
 	certManagerV1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	certManagerClientset "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
+	"github.com/google/uuid"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
@@ -40,6 +41,7 @@ type Projects interface {
 	AddParticipant(id string, username string, auth middleware.Authentication) error
 	RemoveParticipant(id string, username string, auth middleware.Authentication) error
 	JoinProject(ctx context.Context, code string, auth middleware.Authentication) (*openapi.Project, error)
+	RegenerateInviteCode(ctx context.Context, id string, auth middleware.Authentication) (string, error)
 	GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error)
 	CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error)
 	DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error
@@ -94,7 +96,11 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 	} else if exists {
 		return nil, apperrors.BadRequest("project with this name already exists")
 	}
-	record := storage.ProjectEntity{Id: project.Id}
+	inviteCode, err := uuid.NewRandom()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate invite code")
+	}
+	record := storage.ProjectEntity{Id: project.Id, InviteCode: inviteCode.String()}
 	err = p.storage.ExecTx(ctx, func(s *storage.Storage) error {
 		id, err := s.ProjectRepository().CreateNew(record)
 		if err != nil {
@@ -268,6 +274,32 @@ func (p projectsImpl) JoinProject(ctx context.Context, code string, auth middlew
 	}
 	log.Infof("User %s joined project %s", auth.Username, entity.Id)
 	return &openapi.Project{Id: entity.Id}, nil
+}
+
+func (p projectsImpl) RegenerateInviteCode(ctx context.Context, id string, auth middleware.Authentication) (string, error) {
+	if err := p.checkAccess(id, auth); err != nil {
+		return "", err
+	}
+	newCode, err := uuid.NewRandom()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to regenerate invite code")
+	}
+	err = p.storage.ExecTx(ctx, func(s *storage.Storage) error {
+		record, err := s.ProjectRepository().FindByID(id)
+		if err != nil {
+			return errors.Wrap(err, "failed to retrieve project by id")
+		}
+		record.InviteCode = newCode.String()
+		err = s.ProjectRepository().Update(*record)
+		if err != nil {
+			return errors.Wrap(err, "failed to update project")
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return newCode.String(), nil
 }
 
 func (p projectsImpl) GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error) {

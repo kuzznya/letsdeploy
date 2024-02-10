@@ -28,7 +28,8 @@ type projectRepositoryImpl struct {
 
 func (r *projectRepositoryImpl) CreateNew(project ProjectEntity) (string, error) {
 	var result string
-	err := r.db.Get(&result, "INSERT INTO project (id) VALUES ($1) RETURNING id", project.Id)
+	err := r.db.Get(&result, "INSERT INTO project (id, invite_code) VALUES ($1, $2) RETURNING id",
+		project.Id, project.InviteCode)
 	if err != nil {
 		return "", errors.Wrap(err, "cannot save new project")
 	}
@@ -55,8 +56,13 @@ func (r *projectRepositoryImpl) FindByID(id string) (*ProjectEntity, error) {
 	return &project, nil
 }
 
-func (r *projectRepositoryImpl) Update(_ ProjectEntity) error {
-	panic("Unsupported operation")
+func (r *projectRepositoryImpl) Update(entity ProjectEntity) error {
+	_, err := r.db.Exec("UPDATE project SET invite_code = $1 WHERE id = $2",
+		entity.InviteCode, entity.Id)
+	if err != nil {
+		return errors.Wrap(err, "failed to update project")
+	}
+	return nil
 }
 
 func (r *projectRepositoryImpl) Delete(id string) error {

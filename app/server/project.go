@@ -71,6 +71,14 @@ func (s Server) JoinProject(ctx context.Context, request openapi.JoinProjectRequ
 	return openapi.JoinProject200JSONResponse(*project), nil
 }
 
+func (s Server) RegenerateInviteCode(ctx context.Context, request openapi.RegenerateInviteCodeRequestObject) (openapi.RegenerateInviteCodeResponseObject, error) {
+	code, err := s.core.Projects.RegenerateInviteCode(ctx, request.Id, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to regenerate invite code")
+	}
+	return openapi.RegenerateInviteCode200JSONResponse{InviteCode: code}, nil
+}
+
 func (s Server) GetSecrets(ctx context.Context, request openapi.GetSecretsRequestObject) (openapi.GetSecretsResponseObject, error) {
 	secrets, err := s.core.Projects.GetSecrets(request.Id, middleware.GetAuth(ctx))
 	if err != nil {
