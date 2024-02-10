@@ -495,4 +495,8 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
   </b-container>
 </template>
 
-<style scoped></style>
+<style scoped>
+.handle {
+  cursor: move;
+}
+</style>
