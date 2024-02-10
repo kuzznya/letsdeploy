@@ -16,7 +16,7 @@ UPDATE service SET env_vars = (
         '[]'::jsonb
     )
     FROM env_vars
-    GROUP BY service_id
+    WHERE service_id = service.id
 );
 
 DROP TABLE env_var;
