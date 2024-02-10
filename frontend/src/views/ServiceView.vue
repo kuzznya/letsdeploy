@@ -14,10 +14,6 @@ const router = useRouter();
 
 const service = await api.ServiceApi.getService(props.id)
   .then((r) => r.data)
-  .then((s) => {
-    s.envVars = s.envVars.sort((v1, v2) => v1.name.localeCompare(v2.name));
-    return s;
-  })
   .then((s) => ref(s));
 
 const serviceStatus = ref<ServiceStatusStatusEnum | "unknown">("unknown");
@@ -52,12 +48,9 @@ async function updateService(change: (s: Service) => void) {
   // @ts-ignore
   s.id = undefined;
   change(s);
-  service.value = await api.ServiceApi.updateService(props.id, s)
-    .then((r) => r.data)
-    .then((s) => {
-      s.envVars = s.envVars.sort((v1, v2) => v1.name.localeCompare(v2.name));
-      return s;
-    });
+  service.value = await api.ServiceApi.updateService(props.id, s).then(
+    (r) => r.data
+  );
   loadServiceStatus();
 }
 

@@ -40,10 +40,6 @@ func (s *Storage) SecretRepository() SecretRepository {
 	return &secretRepositoryImpl{db: s.db}
 }
 
-func (s *Storage) EnvVarRepository() EnvVarRepository {
-	return &envVarRepositoryImpl{db: s.db}
-}
-
 func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 	var tx *sqlx.Tx
 

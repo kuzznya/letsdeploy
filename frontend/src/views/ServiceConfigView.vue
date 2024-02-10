@@ -139,15 +139,13 @@ function validateEnvVar(envVar: TypedEnvVar): boolean {
       envVar.value.length > 0) ||
       (envVar.type === "secret" &&
         envVar.secret != null &&
-        envVar.secret.length > 0))
+        envVar.secret.length > 0 &&
+        secrets.value.includes(envVar.secret)))
   );
 }
 
 function addEnvVar() {
   envVars.value.push(newEnvVar.value);
-  envVars.value = envVars.value.sort((v1, v2) =>
-    v1.name.localeCompare(v2.name)
-  );
   newEnvVar.value = {
     name: "",
     type: "value",
@@ -458,7 +456,11 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
             v-else-if="newEnvVar.type === 'secret'"
             v-model="newEnvVar.secret"
             :options="secrets"
-            :state="newEnvVar.secret != null && newEnvVar.secret.length > 0"
+            :state="
+              newEnvVar.secret != null &&
+              newEnvVar.secret.length > 0 &&
+              secrets.includes(newEnvVar.secret)
+            "
             class="d-inline w-auto"
             size="sm"
           />
