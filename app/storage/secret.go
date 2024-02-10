@@ -29,7 +29,7 @@ type secretRepositoryImpl struct {
 
 func (s secretRepositoryImpl) FindByProjectId(id string) ([]SecretEntity, error) {
 	secrets := []SecretEntity{}
-	err := s.db.Select(&secrets, "SELECT * FROM secret WHERE project_id = $1", id)
+	err := s.db.Select(&secrets, "SELECT * FROM secret WHERE project_id = $1 ORDER BY name", id)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get project secrets")
 	}
@@ -58,7 +58,7 @@ func (s secretRepositoryImpl) ExistsByProjectIdAndName(id string, name string) (
 func (s secretRepositoryImpl) FindByProjectIdAndName(id string, name string) (*SecretEntity, error) {
 	var secret SecretEntity
 	err := s.db.Get(&secret, "SELECT * FROM secret WHERE project_id = $1 AND name = $2", id, name)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, apperrors.NotFound(fmt.Sprintf("SecretId with name %s not found", name))
 	} else if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret by name")

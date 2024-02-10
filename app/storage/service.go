@@ -101,7 +101,7 @@ func (r *serviceRepositoryImpl) Delete(id int) error {
 
 func (r *serviceRepositoryImpl) FindAll(limit int, offset int) ([]ServiceEntity, error) {
 	services := []ServiceEntity{}
-	err := r.db.Select(&services, "SELECT * FROM service LIMIT $1 OFFSET $2", limit, offset)
+	err := r.db.Select(&services, "SELECT * FROM service ORDER BY id LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve services")
 	}
@@ -110,7 +110,7 @@ func (r *serviceRepositoryImpl) FindAll(limit int, offset int) ([]ServiceEntity,
 
 func (r *serviceRepositoryImpl) FindByProjectId(projectId string) ([]ServiceEntity, error) {
 	services := []ServiceEntity{}
-	err := r.db.Select(&services, "SELECT * FROM service WHERE project_id = $1", projectId)
+	err := r.db.Select(&services, "SELECT * FROM service WHERE project_id = $1 ORDER BY name", projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project services")
 	}

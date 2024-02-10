@@ -47,7 +47,7 @@ func (r managedServiceRepositoryImpl) ExistsByID(id int) (bool, error) {
 func (r managedServiceRepositoryImpl) FindByID(id int) (*ManagedServiceEntity, error) {
 	var entity ManagedServiceEntity
 	err := r.db.Get(&entity, "SELECT * FROM managed_service WHERE id = $1", id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, apperrors.NotFound("Project not found")
 	} else if err != nil {
 		return nil, errors.Wrap(err, "cannot find managed service by id")
@@ -74,7 +74,7 @@ func (r managedServiceRepositoryImpl) Delete(id int) error {
 
 func (r managedServiceRepositoryImpl) FindAll(limit int, offset int) ([]ManagedServiceEntity, error) {
 	entities := []ManagedServiceEntity{}
-	err := r.db.Select(&entities, "SELECT * FROM managed_service LIMIT $1 OFFSET $2", limit, offset)
+	err := r.db.Select(&entities, "SELECT * FROM managed_service ORDER BY id LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve managed services")
 	}
@@ -83,7 +83,7 @@ func (r managedServiceRepositoryImpl) FindAll(limit int, offset int) ([]ManagedS
 
 func (r managedServiceRepositoryImpl) FindByProjectId(projectId string) ([]ManagedServiceEntity, error) {
 	entities := []ManagedServiceEntity{}
-	err := r.db.Select(&entities, "SELECT * FROM managed_service WHERE project_id = $1", projectId)
+	err := r.db.Select(&entities, "SELECT * FROM managed_service WHERE project_id = $1 ORDER BY name", projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve managed services of a project")
 	}

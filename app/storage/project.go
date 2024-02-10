@@ -69,7 +69,7 @@ func (r *projectRepositoryImpl) Delete(id string) error {
 
 func (r *projectRepositoryImpl) FindAll(limit int, offset int) ([]ProjectEntity, error) {
 	projects := []ProjectEntity{}
-	err := r.db.Select(&projects, "SELECT * FROM project LIMIT $1 OFFSET $2", limit, offset)
+	err := r.db.Select(&projects, "SELECT * FROM project ORDER BY id LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve projects")
 	}
@@ -81,7 +81,8 @@ func (r *projectRepositoryImpl) FindUserProjects(username string) ([]ProjectEnti
 	err := r.db.Select(&projects,
 		`SELECT p.* FROM project p 
     	JOIN project_participant pp ON pp.project_id = p.id 
-        WHERE pp.username = $1`,
+        WHERE pp.username = $1
+        ORDER BY p.id`,
 		username)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve user's projects")
@@ -163,7 +164,7 @@ func (r *projectRepositoryImpl) RemoveParticipant(id string, username string) er
 func (r *projectRepositoryImpl) FindByInviteCode(code string) (*ProjectEntity, error) {
 	var project ProjectEntity
 	err := r.db.Get(&project, "SELECT * FROM project WHERE invite_code = $1::uuid", code)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, apperrors.NotFound("Project with this invite code not found")
 	} else if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve project by invite code")
