@@ -26,7 +26,7 @@ export const types: { [type in ManagedServiceTypeEnum]: ManagedServiceType } = {
   [ManagedServiceTypeEnum.Redis]: {
     type: ManagedServiceTypeEnum.Redis,
     name: "Redis 7",
-    image: () => h("i", { class: "bi bi-stack" }),
+    image: () => h("i", { class: "bi bi-database-gear" }),
   },
   [ManagedServiceTypeEnum.Rabbitmq]: {
     type: ManagedServiceTypeEnum.Rabbitmq,
