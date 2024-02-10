@@ -386,7 +386,12 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
       <i class="bi bi-x-lg" />
     </b-button>
 
-    <draggable v-model="envVars" group="envVars" item-key="name">
+    <draggable
+      v-model="envVars"
+      group="envVars"
+      item-key="name"
+      handle=".handle"
+    >
       <template #item="{ element }: { element: TypedEnvVar }">
         <b-row>
           <b-col class="my-1">
