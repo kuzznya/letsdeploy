@@ -4,6 +4,7 @@ import ErrorModal from "@/components/ErrorModal.vue";
 import { computed, onUnmounted, ref } from "vue";
 import api from "@/api";
 import { useDarkMode } from "@/dark-mode";
+import draggable from "vuedraggable";
 
 const darkMode = useDarkMode();
 const darkModeEnabled = darkMode.asComputed();
@@ -384,37 +385,44 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
     >
       <i class="bi bi-x-lg" />
     </b-button>
-    <div v-for="envVar in envVars" :key="envVar.name">
-      <b-row>
-        <b-col>
-          <b-button
-            variant="outline-secondary"
-            class="me-1"
-            size="sm"
-            @click.stop="deleteEnvVar(envVar.name)"
-          >
-            <i class="bi bi-trash" />
-          </b-button>
 
-          <b-button
-            variant="outline-secondary"
-            class="me-3"
-            size="sm"
-            @click.stop="editEnvVar(envVar.name)"
-          >
-            <i class="bi bi-pencil" />
-          </b-button>
+    <draggable v-model="envVars" group="envVars" item-key="name">
+      <template #item="{ element }: { element: TypedEnvVar }">
+        <b-row>
+          <b-col class="my-1">
+            <span class="handle px-1">
+              <i class="bi bi-grip-vertical me-1" />
+            </span>
 
-          <span class="font-monospace">{{ envVar.name + " = " }}</span>
-          <span v-if="envVar.type === 'value'" class="font-monospace">{{
-            envVar.value
-          }}</span>
-          <span v-else-if="envVar.type === 'secret'" class="font-monospace"
-            >secret: {{ envVar.secret }}</span
-          >
-        </b-col>
-      </b-row>
-    </div>
+            <b-button
+              variant="outline-secondary"
+              class="me-1"
+              size="sm"
+              @click.stop="deleteEnvVar(element.name)"
+            >
+              <i class="bi bi-trash" />
+            </b-button>
+
+            <b-button
+              variant="outline-secondary"
+              class="me-3"
+              size="sm"
+              @click.stop="editEnvVar(element.name)"
+            >
+              <i class="bi bi-pencil" />
+            </b-button>
+
+            <span class="font-monospace">{{ element.name + " = " }}</span>
+            <span v-if="element.type === 'value'" class="font-monospace">{{
+              element.value
+            }}</span>
+            <span v-else-if="element.type === 'secret'" class="font-monospace"
+              >secret: {{ element.secret }}</span
+            >
+          </b-col>
+        </b-row>
+      </template>
+    </draggable>
 
     <b-card
       v-if="envVars.length === 0"
