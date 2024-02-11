@@ -24,9 +24,6 @@ func ErrorHandler(c *gin.Context) {
 			log.Warnf("Handler returned error, apperrors.ServerError found in error chain: %d %s",
 				serverError.Code, serverError.Error())
 			log.Infof("Error: %+v", err.Err)
-			//if stackErr, ok := err.Err.(stackError); ok {
-			//	log.Infof("Error stacktrace: %+v", err.Err)
-			//}
 			c.JSON(serverError.Code, gin.H{"error": serverError.Message})
 			return
 		}

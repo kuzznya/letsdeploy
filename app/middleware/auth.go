@@ -43,8 +43,7 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	headerValue := ctx.GetHeader("Authorization")
 	if headerValue == "" || len(headerValue) < 8 || headerValue[:7] != "Bearer " {
 		log.Debugf("Authorization header not provided or does not contain Bearer token")
-		ctx.JSON(http.StatusUnauthorized,
-			gin.H{"error": "Bearer token should be provided in Authorization header"})
+		_ = ctx.Error(apperrors.Unauthorized("Bearer token should be provided in Authorization header"))
 		ctx.Abort()
 		return
 	}
@@ -53,13 +52,13 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	token, err := parseToken(tokenString, rsaKeys)
 	if err != nil {
 		log.WithError(err).Errorln("Failed to parse JWT")
-		ctx.Error(apperrors.Forbidden("Failed to authenticate user"))
+		_ = ctx.Error(apperrors.Forbidden("Failed to authenticate user"))
 		ctx.Abort()
 		return
 	}
 	if err := checkClaims(oidcProvider, token); err != nil {
 		log.WithError(err).Errorf("Failed to check claims of token %+v", token)
-		ctx.Error(err)
+		_ = ctx.Error(err)
 		ctx.Abort()
 		return
 	}
