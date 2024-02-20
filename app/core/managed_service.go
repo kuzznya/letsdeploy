@@ -442,7 +442,10 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 			WithValueFrom(m.createPasswordEnvVarSource(service)),
 			applyConfigsCoreV1.EnvVar().
 				WithName("MONGO_INITDB_ROOT_USERNAME").
-				WithValue(managedServices[service.Type].username)).
+				WithValue(managedServices[service.Type].username),
+			applyConfigsCoreV1.EnvVar().
+				WithName("MONGO_INITDB_DATABASE").
+				WithValue("mongo")).
 		WithLivenessProbe(applyConfigsCoreV1.Probe().
 			WithExec(applyConfigsCoreV1.ExecAction().
 				WithCommand("/bin/sh", "-c", livenessCmd)).
