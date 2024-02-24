@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import api from "@/api";
 import { EnvVar } from "@/api/generated";
 import ErrorModal from "@/components/ErrorModal.vue";
+import draggable from "vuedraggable";
 
 const router = useRouter();
 
@@ -200,37 +201,48 @@ async function createService() {
     <p v-if="publicApiPrefix.length === 0">No public access</p>
 
     <label class="mt-3">Environment variables:</label>
-    <div v-for="envVar in envVars" :key="envVar.name">
-      <b-row>
-        <b-col>
-          <b-button
-            variant="outline-secondary"
-            class="me-1"
-            size="sm"
-            @click.stop="deleteEnvVar(envVar.name)"
-          >
-            <i class="bi bi-trash"></i>
-          </b-button>
+    <draggable
+      v-model="envVars"
+      group="envVars"
+      item-key="name"
+      handle=".handle"
+    >
+      <template #item="{ element }: { element: TypedEnvVar }">
+        <b-row class="my-1">
+          <b-col>
+            <span class="handle px-1">
+              <i class="bi bi-grip-vertical me-1" />
+            </span>
 
-          <b-button
-            variant="outline-secondary"
-            class="me-3"
-            size="sm"
-            @click.stop="editEnvVar(envVar.name)"
-          >
-            <i class="bi bi-pencil"></i>
-          </b-button>
+            <b-button
+              variant="outline-secondary"
+              class="me-1"
+              size="sm"
+              @click.stop="deleteEnvVar(element.name)"
+            >
+              <i class="bi bi-trash"></i>
+            </b-button>
 
-          <span class="font-monospace">{{ envVar.name + " = " }}</span>
-          <span v-if="envVar.type === 'value'" class="font-monospace">{{
-            envVar.value
-          }}</span>
-          <span v-else-if="envVar.type === 'secret'" class="font-monospace"
-            >secret: {{ envVar.secret }}</span
-          >
-        </b-col>
-      </b-row>
-    </div>
+            <b-button
+              variant="outline-secondary"
+              class="me-3"
+              size="sm"
+              @click.stop="editEnvVar(element.name)"
+            >
+              <i class="bi bi-pencil"></i>
+            </b-button>
+
+            <span class="font-monospace">{{ element.name + " = " }}</span>
+            <span v-if="element.type === 'value'" class="font-monospace">{{
+                element.value
+              }}</span>
+            <span v-else-if="element.type === 'secret'" class="font-monospace"
+            >secret: {{ element.secret }}</span
+            >
+          </b-col>
+        </b-row>
+      </template>
+    </draggable>
 
     <b-card
       v-if="envVars.length === 0"
@@ -321,4 +333,8 @@ async function createService() {
   </b-container>
 </template>
 
-<style scoped></style>
+<style scoped>
+.handle {
+  cursor: move;
+}
+</style>

@@ -393,8 +393,8 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
       handle=".handle"
     >
       <template #item="{ element }: { element: TypedEnvVar }">
-        <b-row>
-          <b-col class="my-1">
+        <b-row class="my-1">
+          <b-col>
             <span class="handle px-1">
               <i class="bi bi-grip-vertical me-1" />
             </span>

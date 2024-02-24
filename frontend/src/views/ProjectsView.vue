@@ -163,13 +163,29 @@ async function projectParticipants(id: string) {
           @click="onProjectClick(project.id)"
         >
           <b-row>
-            <b-col>
-              <b-card-title class="font-monospace">{{
-                project.id
-              }}</b-card-title>
+            <b-col cols="9">
+              <b-row>
+                <b-col>
+                  <b-card-title class="font-monospace">{{
+                    project.id
+                  }}</b-card-title>
+                </b-col>
+              </b-row>
+
+              <b-row>
+                <b-link
+                  :href="`https://${project.id}.letsdeploy.space`"
+                  target="_blank"
+                  @click.stop=""
+                  class="w-auto"
+                >
+                  {{ project.id }}.letsdeploy.space
+                </b-link>
+              </b-row>
+              {{ project.participants }}
             </b-col>
 
-            <b-col class="text-end">
+            <b-col class="text-end" cols="3">
               <b-button
                 class="mr-2"
                 variant="outline-danger"
@@ -179,17 +195,10 @@ async function projectParticipants(id: string) {
               </b-button>
             </b-col>
           </b-row>
+
           <b-row>
-            <b-link
-              :href="`https://${project.id}.letsdeploy.space`"
-              target="_blank"
-              @click.stop=""
-              class="w-auto"
-            >
-              {{ project.id }}.letsdeploy.space
-            </b-link>
+
           </b-row>
-          {{ project.participants }}
         </b-card>
       </b-col>
     </b-row>

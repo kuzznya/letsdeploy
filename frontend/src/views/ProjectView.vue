@@ -29,6 +29,10 @@ const managedServicesMap = project.value.managedServices.reduce(
 ) as { [id: number]: ManagedService };
 
 const serviceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>({});
+const managedServiceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>(
+  {}
+);
+
 loadServiceStatuses();
 
 const serviceStatusRefresher = setInterval(() => loadServiceStatuses(), 10_000);
@@ -39,8 +43,11 @@ function getServiceStatus(id: number) {
   return serviceStatuses.value[id] ?? "unknown";
 }
 
-function getServiceStatusVariant(id: number) {
-  const status = getServiceStatus(id);
+function getManagedServiceStatus(id: number) {
+  return managedServiceStatuses.value[id] ?? "unknown";
+}
+
+function getServiceStatusVariant(status: ServiceStatusStatusEnum) {
   switch (status) {
     case ServiceStatusStatusEnum.Available:
       return "success";
@@ -62,7 +69,9 @@ function loadServiceStatuses() {
   for (const service of project.value.managedServices) {
     api.ManagedServiceApi.getManagedServiceStatus(service.id)
       .then((r) => r.data)
-      .then((status) => (serviceStatuses.value[status.id] = status.status));
+      .then(
+        (status) => (managedServiceStatuses.value[status.id] = status.status)
+      );
   }
 }
 
@@ -306,66 +315,78 @@ function cancelSecretCreation() {
             "
           >
             <b-row>
-              <b-col class="mt-2">
-                <b-card-title class="font-monospace">{{
-                  service.name
-                }}</b-card-title>
+              <b-col cols="9">
+                <b-row>
+                  <b-col class="mt-2">
+                    <b-card-title class="font-monospace">{{
+                      service.name
+                    }}</b-card-title>
+                  </b-col>
+                </b-row>
+
+                <b-row>
+                  <b-col>
+                    <p>
+                      {{ service.image }}<br />Port {{ service.port }}
+                      <span class="ms-5">
+                        {{ service.publicApiPrefix ?? "" }}
+                      </span>
+                    </p>
+                  </b-col>
+                </b-row>
+
+                <b-row>
+                  <b-col>
+                    <b-badge
+                      :variant="
+                        getServiceStatusVariant(getServiceStatus(service.id))
+                      "
+                    >
+                      {{ getServiceStatus(service.id) }}
+                    </b-badge>
+                  </b-col>
+                </b-row>
               </b-col>
 
-              <b-col class="text-end">
-                <b-button
-                  v-if="
-                    service.publicApiPrefix != null &&
-                    service.publicApiPrefix.length > 0
-                  "
-                  class="mx-1 mb-1"
-                  variant="outline-secondary"
-                  :href="`https://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
-                  target="_blank"
-                  @click.stop=""
-                >
-                  <i class="bi bi-box-arrow-up-right"></i>
-                </b-button>
+              <b-col cols="3">
+                <b-row>
+                  <b-col class="text-end">
+                    <b-button
+                      class="mx-1 mb-1"
+                      variant="outline-secondary"
+                      @click.stop="
+                        router.push({
+                          name: 'serviceLogs',
+                          params: { id: service.id },
+                        })
+                      "
+                    >
+                      <i class="bi bi-file-text"></i>
+                    </b-button>
 
-                <b-button
-                  class="mx-1 mb-1"
-                  variant="outline-secondary"
-                  @click.stop="
-                    router.push({
-                      name: 'serviceLogs',
-                      params: { id: service.id },
-                    })
-                  "
-                >
-                  <i class="bi bi-file-text"></i>
-                </b-button>
+                    <b-button
+                      v-if="
+                        service.publicApiPrefix != null &&
+                        service.publicApiPrefix.length > 0
+                      "
+                      class="mx-1 mb-1"
+                      variant="outline-secondary"
+                      :href="`https://${project.id}.letsdeploy.space${service.publicApiPrefix}`"
+                      target="_blank"
+                      @click.stop=""
+                    >
+                      <i class="bi bi-box-arrow-up-right"></i>
+                    </b-button>
 
-                <b-button
-                  class="mx-1 mb-1"
-                  variant="outline-danger"
-                  @click.stop="onDeleteServiceClicked(service)"
-                >
-                  <i class="bi bi-trash"></i>
-                </b-button>
-              </b-col>
-            </b-row>
-
-            <b-row>
-              <b-col>
-                <p>
-                  {{ service.image }}<br />Port {{ service.port }}
-                  <span class="ms-5">
-                    {{ service.publicApiPrefix ?? "" }}
-                  </span>
-                </p>
-              </b-col>
-            </b-row>
-
-            <b-row>
-              <b-col>
-                <b-badge :variant="getServiceStatusVariant(service.id)">
-                  {{ getServiceStatus(service.id) }}
-                </b-badge>
+                    <b-button
+                      class="mx-1 mb-1"
+                      variant="outline-danger"
+                      @click.stop="onDeleteServiceClicked(service)"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </b-button>
+                  </b-col>
+                </b-row>
               </b-col>
             </b-row>
           </b-card>
@@ -423,13 +444,43 @@ function cancelSecretCreation() {
             "
           >
             <b-row>
-              <b-col>
-                <b-card-title class="font-monospace">{{
-                  managedService.name
-                }}</b-card-title>
+              <b-col cols="9">
+                <b-row>
+                  <b-col>
+                    <b-card-title class="font-monospace">{{
+                      managedService.name
+                    }}</b-card-title>
+                  </b-col>
+
+                  <b-row>
+                    <b-col>
+                      <type-image
+                        :font-size="5"
+                        :type="types[managedService.type]"
+                      />
+                      <span class="ms-2">{{
+                        types[managedService.type].name
+                      }}</span>
+                    </b-col>
+                  </b-row>
+
+                  <b-row>
+                    <b-col>
+                      <b-badge
+                        :variant="
+                          getServiceStatusVariant(
+                            getManagedServiceStatus(managedService.id)
+                          )
+                        "
+                      >
+                        {{ getManagedServiceStatus(managedService.id) }}
+                      </b-badge>
+                    </b-col>
+                  </b-row>
+                </b-row>
               </b-col>
 
-              <b-col class="text-end">
+              <b-col cols="3" class="text-end">
                 <b-button
                   class="mr-2"
                   variant="outline-danger"
@@ -437,21 +488,6 @@ function cancelSecretCreation() {
                 >
                   <i class="bi bi-trash"></i>
                 </b-button>
-              </b-col>
-            </b-row>
-
-            <b-row>
-              <b-col>
-                <type-image :font-size="5" :type="types[managedService.type]" />
-                <span class="ms-2">{{ types[managedService.type].name }}</span>
-              </b-col>
-            </b-row>
-
-            <b-row>
-              <b-col>
-                <b-badge :variant="getServiceStatusVariant(managedService.id)">
-                  {{ getServiceStatus(managedService.id) }}
-                </b-badge>
               </b-col>
             </b-row>
           </b-card>
@@ -547,13 +583,38 @@ function cancelSecretCreation() {
             @click="() => {}"
           >
             <b-row>
-              <b-col>
-                <b-card-title class="font-monospace">{{
-                  secret.name
-                }}</b-card-title>
+              <b-col cols="9">
+                <b-row>
+                  <b-col>
+                    <b-card-title class="font-monospace">{{
+                      secret.name
+                    }}</b-card-title>
+                  </b-col>
+                </b-row>
+
+                <b-row v-if="secret.managedService != null">
+                  <b-col>
+                    <p>
+                      Managed by
+                      <b-link
+                        :to="{
+                          name: 'managedService',
+                          params: { id: secret.managedService.id },
+                        }"
+                        class="font-monospace link-underline-dark"
+                      >
+                        {{ secret.managedService.name }}
+                      </b-link>
+                    </p>
+                  </b-col>
+                </b-row>
               </b-col>
 
-              <b-col v-if="secret.managedService == null" class="text-end">
+              <b-col
+                v-if="secret.managedService == null"
+                cols="3"
+                class="text-end"
+              >
                 <b-button
                   class="mr-2"
                   variant="outline-danger"
@@ -561,23 +622,6 @@ function cancelSecretCreation() {
                 >
                   <i class="bi bi-trash"></i>
                 </b-button>
-              </b-col>
-            </b-row>
-
-            <b-row v-if="secret.managedService != null">
-              <b-col>
-                <p>
-                  Managed by
-                  <b-link
-                    :to="{
-                      name: 'managedService',
-                      params: { id: secret.managedService.id },
-                    }"
-                    class="font-monospace link-underline-dark"
-                  >
-                    {{ secret.managedService.name }}
-                  </b-link>
-                </p>
               </b-col>
             </b-row>
           </b-card>
