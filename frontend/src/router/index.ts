@@ -9,6 +9,7 @@ import NewManagedServiceView from "@/views/NewManagedServiceView.vue";
 import ManagedServiceView from "@/views/ManagedServiceView.vue";
 import ServiceConfigView from "@/views/ServiceConfigView.vue";
 import ServiceLogsView from "@/views/ServiceLogsView.vue";
+import ApiKeysView from "@/views/ApiKeysView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -93,6 +94,14 @@ const router = createRouter({
       name: "managedService",
       component: ManagedServiceView,
       props: (r) => ({ id: Number.parseInt(r.params.id as string) }),
+      meta: {
+        secured: true,
+      },
+    },
+    {
+      path: "/api-keys",
+      name: "apiKeys",
+      component: ApiKeysView,
       meta: {
         secured: true,
       },

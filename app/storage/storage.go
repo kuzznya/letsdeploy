@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +39,10 @@ func (s *Storage) SecretRepository() SecretRepository {
 	return &secretRepositoryImpl{db: s.db}
 }
 
+func (s *Storage) ApiKeyRepository() ApiKeyRepository {
+	return &apiKeyRepositoryImpl{db: s.db}
+}
+
 func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 	var tx *sqlx.Tx
 
@@ -60,7 +63,7 @@ func (s *Storage) ExecTx(ctx context.Context, f func(*Storage) error) error {
 	err := f(&Storage{db: tx})
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Panicln(fmt.Errorf("cannot rollback transaction: %w", err))
+			log.WithError(err).Panicln("cannot rollback transaction")
 		}
 		return err
 	}

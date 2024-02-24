@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const tempTokenPrefix = "ldt_"
+
 type Tokens interface {
 	CreateTempToken(ctx context.Context, auth middleware.Authentication) (string, error)
 }
@@ -26,13 +28,13 @@ func InitTokens(rdb *redis.Client) Tokens {
 }
 
 func (t tokensImpl) CreateTempToken(ctx context.Context, auth middleware.Authentication) (string, error) {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	tokenLen := 16
 	b := make([]rune, tokenLen)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
-	token := string(b)
+	token := tempTokenPrefix + string(b)
 
 	err := t.rdb.Set(ctx, token, auth.Username, 1*time.Minute).Err()
 	if err != nil {

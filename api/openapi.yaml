@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 
 info:
   title: Letsdeploy API
@@ -9,6 +9,7 @@ security:
   - jwt: []
   - oidc:
       - openid
+  - apiKey: []
 
 tags:
   - name: project
@@ -614,6 +615,81 @@ paths:
                 required:
                   - token
 
+  /api/v1/api_keys:
+    post:
+      operationId: CreateApiKey
+      tags:
+        - api_key
+      summary: Create API key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKey'
+      responses:
+        200:
+          description: Created API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      operationId: GetApiKeys
+      tags:
+        - api_key
+      summary: Get API keys
+      description: Get all user API keys
+      responses:
+        200:
+          description: API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/api_keys/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: DeleteApiKey
+      tags:
+        - api_key
+      summary: Delete API key
+      description: Delete API key and revoke the access immediately
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   securitySchemes:
     jwt:
@@ -623,6 +699,10 @@ components:
     oidc:
       type: openIdConnect
       openIdConnectUrl: https://auth.kuzznya.com/realms/letsdeploy/.well-known/openid-configuration
+    apiKey:
+      type: apiKey
+      in: header
+      name: API-Key
 
   schemas:
     Project:
@@ -771,6 +851,18 @@ components:
           type: integer
           readOnly: true
       required:
+        - name
+
+    ApiKey:
+      type: object
+      properties:
+        key:
+          type: string
+          readOnly: true
+        name:
+          type: string
+      required:
+        - key
         - name
 
     Error:

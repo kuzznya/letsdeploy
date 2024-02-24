@@ -1,4 +1,5 @@
 import {
+  ApiKeyApi,
   Configuration,
   ManagedServiceApi,
   ProjectApi,
@@ -27,6 +28,7 @@ export default {
   ManagedServiceApi: new ManagedServiceApi(config),
   TokenApi: new TokenApi(config),
   ServiceLogsApi: new ServiceLogsApi(config),
+  ApiKeyApi: new ApiKeyApi(config),
   registerKeycloak(instance: Keycloak) {
     keycloak = instance;
   },

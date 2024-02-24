@@ -16,6 +16,7 @@ type Core struct {
 	Services        Services
 	ManagedServices ManagedServices
 	Tokens          Tokens
+	ApiKeys         ApiKeys
 }
 
 type projectSynchronizable interface {
@@ -35,11 +36,14 @@ func New(
 	services := InitServices(projects, storage, clientset, cfg)
 	managedServices := InitManagedServices(projects, storage, clientset)
 	tokens := InitTokens(rdb)
+	apiKeys := InitApiKeys(storage)
+
 	core := &Core{
 		Projects:        projects,
 		Services:        services,
 		ManagedServices: managedServices,
 		Tokens:          tokens,
+		ApiKeys:         apiKeys,
 	}
 	corePromise.Resolve(*core)
 	InitSync(core, taskScheduler)

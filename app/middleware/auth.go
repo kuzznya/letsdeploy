@@ -41,9 +41,13 @@ func CreateAuthMiddleware(cfg *viper.Viper) openapi.MiddlewareFunc {
 func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.PublicKey) {
 	oidcProvider := cfg.GetString("oidc.provider")
 	headerValue := ctx.GetHeader("Authorization")
+	if headerValue == "" {
+		ctx.Next()
+		return
+	}
 	if headerValue == "" || len(headerValue) < 8 || headerValue[:7] != "Bearer " {
-		log.Debugf("Authorization header not provided or does not contain Bearer token")
-		_ = ctx.Error(apperrors.Unauthorized("Bearer token should be provided in Authorization header"))
+		log.Debugf("Authorization header does not contain Bearer token")
+		_ = ctx.Error(apperrors.Unauthorized("Authorization header does not contain Bearer token"))
 		ctx.Abort()
 		return
 	}
@@ -65,7 +69,7 @@ func AuthMiddleware(ctx *gin.Context, cfg *viper.Viper, rsaKeys map[string]*rsa.
 	claim := cfg.GetString("oidc.username-claim")
 	username := token.Claims.(jwt.MapClaims)[claim].(string)
 	ctx.Set(authContextKey, &Authentication{Username: username, Token: tokenString})
-	log.Debugf("User %s authenticated\n", username)
+	log.Debugf("User %s authenticated", username)
 
 	ctx.Next()
 }

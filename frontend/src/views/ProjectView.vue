@@ -263,7 +263,7 @@ function cancelSecretCreation() {
         </b-link>
       </div>
       <b-button class="ms-1" size="sm" variant="light" @click="copyInviteLink">
-        <i class="bi bi-clipboard" />
+        <i class="bi bi-copy" />
       </b-button>
       <b-button
         class="ms-1"

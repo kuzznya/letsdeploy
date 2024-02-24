@@ -25,16 +25,6 @@ import (
 	"time"
 )
 
-var logLevels = map[string]log.Level{
-	"trace": log.TraceLevel,
-	"debug": log.DebugLevel,
-	"info":  log.InfoLevel,
-	"warn":  log.WarnLevel,
-	"error": log.ErrorLevel,
-	"fatal": log.FatalLevel,
-	"panic": log.PanicLevel,
-}
-
 func Start() {
 	cfg := setupConfig()
 	configureLogging(cfg)
@@ -61,7 +51,13 @@ func Start() {
 
 	handler := openapi.NewStrictHandler(s, make([]openapi.StrictMiddlewareFunc, 0))
 	openapi.RegisterHandlersWithOptions(r, handler, openapi.GinServerOptions{
-		Middlewares: []openapi.MiddlewareFunc{middleware.CreateAuthMiddleware(cfg)},
+		Middlewares: []openapi.MiddlewareFunc{
+			middleware.CreateAuthMiddleware(cfg),
+			middleware.CreateApiKeyAuthMiddleware(func(apiKey string) (string, error) {
+				return c.ApiKeys.GetUsernameByApiKey(apiKey)
+			}),
+			middleware.Authz,
+		},
 		ErrorHandler: func(ctx *gin.Context, err error, code int) {
 			ctx.JSON(code, gin.H{"error": err.Error()})
 		},
@@ -130,11 +126,11 @@ func setupConfig() *viper.Viper {
 func configureLogging(cfg *viper.Viper) {
 	cfg.SetDefault("log.level", "info")
 	logLevel := cfg.GetString("log.level")
-	if level, ok := logLevels[strings.ToLower(logLevel)]; ok {
-		log.SetLevel(level)
-	} else {
-		log.Panicf("Unknown log level %s\n", logLevel)
+	level, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Panicf("Failed to parse log level: %s", err)
 	}
+	log.SetLevel(level)
 
 	formatter := &log.TextFormatter{FullTimestamp: true}
 	log.SetFormatter(formatter)

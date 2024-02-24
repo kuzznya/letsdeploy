@@ -49,7 +49,7 @@ type serviceRepositoryImpl struct {
 	db QueryExecDB
 }
 
-func (r *serviceRepositoryImpl) CreateNew(service ServiceEntity) (int, error) {
+func (r serviceRepositoryImpl) CreateNew(service ServiceEntity) (int, error) {
 	var id int
 	err := r.db.Get(&id,
 		`INSERT INTO service (project_id, name, image, port, public_api_prefix, env_vars) 
@@ -62,7 +62,7 @@ func (r *serviceRepositoryImpl) CreateNew(service ServiceEntity) (int, error) {
 	return id, nil
 }
 
-func (r *serviceRepositoryImpl) ExistsByID(id int) (bool, error) {
+func (r serviceRepositoryImpl) ExistsByID(id int) (bool, error) {
 	var exists bool
 	err := r.db.Get(&exists, "SELECT exists(SELECT * FROM service WHERE id = $1)", id)
 	if err != nil {
@@ -71,7 +71,7 @@ func (r *serviceRepositoryImpl) ExistsByID(id int) (bool, error) {
 	return exists, nil
 }
 
-func (r *serviceRepositoryImpl) FindByID(id int) (*ServiceEntity, error) {
+func (r serviceRepositoryImpl) FindByID(id int) (*ServiceEntity, error) {
 	var service ServiceEntity
 	err := r.db.Get(&service, "SELECT * FROM service WHERE id = $1", id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -82,7 +82,7 @@ func (r *serviceRepositoryImpl) FindByID(id int) (*ServiceEntity, error) {
 	return &service, nil
 }
 
-func (r *serviceRepositoryImpl) Update(service ServiceEntity) error {
+func (r serviceRepositoryImpl) Update(service ServiceEntity) error {
 	_, err := r.db.Exec("UPDATE service SET name = $1, image = $2, port = $3, public_api_prefix = $4, env_vars = $5 WHERE id = $6",
 		service.Name, service.Image, service.Port, service.PublicApiPrefix, &service.EnvVars, service.Id)
 	if err != nil {
@@ -91,7 +91,7 @@ func (r *serviceRepositoryImpl) Update(service ServiceEntity) error {
 	return nil
 }
 
-func (r *serviceRepositoryImpl) Delete(id int) error {
+func (r serviceRepositoryImpl) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM service WHERE id = $1", id)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete service")
@@ -99,7 +99,7 @@ func (r *serviceRepositoryImpl) Delete(id int) error {
 	return nil
 }
 
-func (r *serviceRepositoryImpl) FindAll(limit int, offset int) ([]ServiceEntity, error) {
+func (r serviceRepositoryImpl) FindAll(limit int, offset int) ([]ServiceEntity, error) {
 	services := []ServiceEntity{}
 	err := r.db.Select(&services, "SELECT * FROM service ORDER BY id LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
@@ -108,7 +108,7 @@ func (r *serviceRepositoryImpl) FindAll(limit int, offset int) ([]ServiceEntity,
 	return services, nil
 }
 
-func (r *serviceRepositoryImpl) FindByProjectId(projectId string) ([]ServiceEntity, error) {
+func (r serviceRepositoryImpl) FindByProjectId(projectId string) ([]ServiceEntity, error) {
 	services := []ServiceEntity{}
 	err := r.db.Select(&services, "SELECT * FROM service WHERE project_id = $1 ORDER BY name", projectId)
 	if err != nil {
@@ -117,7 +117,7 @@ func (r *serviceRepositoryImpl) FindByProjectId(projectId string) ([]ServiceEnti
 	return services, nil
 }
 
-func (r *serviceRepositoryImpl) ExistsByNameAndProjectId(name string, projectId string) (bool, error) {
+func (r serviceRepositoryImpl) ExistsByNameAndProjectId(name string, projectId string) (bool, error) {
 	var exists bool
 	err := r.db.Get(&exists,
 		"SELECT exists(SELECT * FROM service WHERE project_id = $1 AND name = $2)",

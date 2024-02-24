@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed } from "vue";
+import { AxiosError } from "axios";
 
 interface ErrorLike {
   message: string;
@@ -15,11 +16,20 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: string | Error | null): void;
 }>();
 
-const errorMessage = computed(() =>
-  props.modelValue instanceof Error
-    ? props.modelValue.message
-    : props.modelValue
-);
+const errorMessage = computed(() => {
+  if (
+    props.modelValue instanceof AxiosError &&
+    props.modelValue.response &&
+    props.modelValue.response.data &&
+    props.modelValue.response.data["error"]
+  ) {
+    return props.modelValue.response.data["error"];
+  } else if (props.modelValue instanceof Error) {
+    return props.modelValue.message;
+  } else {
+    return props.modelValue;
+  }
+});
 </script>
 
 <template>

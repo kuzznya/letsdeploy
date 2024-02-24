@@ -40,12 +40,12 @@ func ErrorHandler(c *gin.Context) {
 			}
 			err = errors.Unwrap(err)
 		}
-		c.JSON(http.StatusInternalServerError, c.Errors.Last().JSON())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unknown error"})
 		return
 	}
 	log.WithField("errors", c.Errors.JSON()).Errorln(
 		"Handler returned multiple errors, apperrors.ServerError not found in error chain, responding with 500")
-	c.JSON(http.StatusInternalServerError, c.Errors.JSON())
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Unknown error"})
 }
 
 func serverErrorFromCause(err error) (serverError *apperrors.ServerError, found bool) {

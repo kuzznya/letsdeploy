@@ -26,7 +26,7 @@ type projectRepositoryImpl struct {
 	db QueryExecDB
 }
 
-func (r *projectRepositoryImpl) CreateNew(project ProjectEntity) (string, error) {
+func (r projectRepositoryImpl) CreateNew(project ProjectEntity) (string, error) {
 	var result string
 	err := r.db.Get(&result, "INSERT INTO project (id, invite_code) VALUES ($1, $2) RETURNING id",
 		project.Id, project.InviteCode)
@@ -36,7 +36,7 @@ func (r *projectRepositoryImpl) CreateNew(project ProjectEntity) (string, error)
 	return result, nil
 }
 
-func (r *projectRepositoryImpl) ExistsByID(id string) (bool, error) {
+func (r projectRepositoryImpl) ExistsByID(id string) (bool, error) {
 	var exists bool
 	err := r.db.Get(&exists, "SELECT exists(SELECT * FROM project WHERE id = $1)", id)
 	if err != nil {
@@ -45,7 +45,7 @@ func (r *projectRepositoryImpl) ExistsByID(id string) (bool, error) {
 	return exists, nil
 }
 
-func (r *projectRepositoryImpl) FindByID(id string) (*ProjectEntity, error) {
+func (r projectRepositoryImpl) FindByID(id string) (*ProjectEntity, error) {
 	var project ProjectEntity
 	err := r.db.Get(&project, "SELECT * FROM project WHERE id = $1", id)
 	if err == sql.ErrNoRows {
@@ -56,7 +56,7 @@ func (r *projectRepositoryImpl) FindByID(id string) (*ProjectEntity, error) {
 	return &project, nil
 }
 
-func (r *projectRepositoryImpl) Update(entity ProjectEntity) error {
+func (r projectRepositoryImpl) Update(entity ProjectEntity) error {
 	_, err := r.db.Exec("UPDATE project SET invite_code = $1 WHERE id = $2",
 		entity.InviteCode, entity.Id)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *projectRepositoryImpl) Update(entity ProjectEntity) error {
 	return nil
 }
 
-func (r *projectRepositoryImpl) Delete(id string) error {
+func (r projectRepositoryImpl) Delete(id string) error {
 	_, err := r.db.Exec("DELETE FROM project WHERE id = $1", id)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete project")
@@ -73,7 +73,7 @@ func (r *projectRepositoryImpl) Delete(id string) error {
 	return nil
 }
 
-func (r *projectRepositoryImpl) FindAll(limit int, offset int) ([]ProjectEntity, error) {
+func (r projectRepositoryImpl) FindAll(limit int, offset int) ([]ProjectEntity, error) {
 	projects := []ProjectEntity{}
 	err := r.db.Select(&projects, "SELECT * FROM project ORDER BY id LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
@@ -82,7 +82,7 @@ func (r *projectRepositoryImpl) FindAll(limit int, offset int) ([]ProjectEntity,
 	return projects, nil
 }
 
-func (r *projectRepositoryImpl) FindUserProjects(username string) ([]ProjectEntity, error) {
+func (r projectRepositoryImpl) FindUserProjects(username string) ([]ProjectEntity, error) {
 	projects := []ProjectEntity{}
 	err := r.db.Select(&projects,
 		`SELECT p.* FROM project p 
@@ -96,7 +96,7 @@ func (r *projectRepositoryImpl) FindUserProjects(username string) ([]ProjectEnti
 	return projects, nil
 }
 
-func (r *projectRepositoryImpl) GetParticipants(id string) ([]string, error) {
+func (r projectRepositoryImpl) GetParticipants(id string) ([]string, error) {
 	exists, err := r.ExistsByID(id)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (r *projectRepositoryImpl) GetParticipants(id string) ([]string, error) {
 	return participants, nil
 }
 
-func (r *projectRepositoryImpl) IsParticipant(id string, username string) (bool, error) {
+func (r projectRepositoryImpl) IsParticipant(id string, username string) (bool, error) {
 	exists, err := r.ExistsByID(id)
 	if err != nil {
 		return false, err
@@ -134,7 +134,7 @@ func (r *projectRepositoryImpl) IsParticipant(id string, username string) (bool,
 	return isParticipant, nil
 }
 
-func (r *projectRepositoryImpl) AddParticipant(id string, username string) error {
+func (r projectRepositoryImpl) AddParticipant(id string, username string) error {
 	exists, err := r.ExistsByID(id)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ ON CONFLICT (project_id, username) DO NOTHING`, id, username)
 	return nil
 }
 
-func (r *projectRepositoryImpl) RemoveParticipant(id string, username string) error {
+func (r projectRepositoryImpl) RemoveParticipant(id string, username string) error {
 	exists, err := r.ExistsByID(id)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (r *projectRepositoryImpl) RemoveParticipant(id string, username string) er
 	return nil
 }
 
-func (r *projectRepositoryImpl) FindByInviteCode(code string) (*ProjectEntity, error) {
+func (r projectRepositoryImpl) FindByInviteCode(code string) (*ProjectEntity, error) {
 	var project ProjectEntity
 	err := r.db.Get(&project, "SELECT * FROM project WHERE invite_code = $1::uuid", code)
 	if errors.Is(err, sql.ErrNoRows) {

@@ -2,6 +2,7 @@
 import { RouterView, useRouter } from "vue-router";
 import { useKeycloak } from "@/keycloak";
 import { useDarkMode } from "@/dark-mode";
+import { computed } from "vue";
 
 const keycloak = useKeycloak();
 const darkMode = useDarkMode();
@@ -21,6 +22,12 @@ if (
     query: router.currentRoute.value.query,
   });
 }
+
+const username = computed(() =>
+  keycloak.authenticated && keycloak.tokenParsed
+    ? keycloak.tokenParsed["preferred_username"]
+    : "User"
+);
 </script>
 
 <template>
@@ -33,16 +40,27 @@ if (
 
       <b-navbar-nav>
         <b-button variant="outline-info" @click="darkMode.switch()">
-          <i v-if="darkModeEnabled" class="bi bi-toggle2-on" />
-          <i v-else class="bi bi-toggle2-off" />
-          Dark mode
+          <i class="bi bi-sun me-1" />
+          <i v-if="darkModeEnabled" class="bi bi-toggle2-on me-1" />
+          <i v-else class="bi bi-toggle2-off me-1" />
+          <i class="bi bi-moon" />
         </b-button>
-        <b-nav-item v-if="!keycloak.authenticated" @click="keycloak.login()"
-          >Log in / Sign up
+
+        <b-nav-item v-if="!keycloak.authenticated" @click="keycloak.login()">
+          Log in / Sign up
         </b-nav-item>
-        <b-nav-item v-if="keycloak.authenticated" @click="keycloak.logout()"
-          >Log out
-        </b-nav-item>
+
+        <b-nav-item-dropdown v-if="keycloak.authenticated" class="p-0" right>
+          <template #button-content>
+            {{ username }}
+          </template>
+          <b-dropdown-item-button @click="router.push({ name: 'apiKeys' })">
+            API keys
+          </b-dropdown-item-button>
+          <b-dropdown-item @click="keycloak.logout()">
+            Log out
+          </b-dropdown-item>
+        </b-nav-item-dropdown>
       </b-navbar-nav>
     </b-navbar>
   </header>
