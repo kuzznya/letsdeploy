@@ -38,7 +38,8 @@ func (s *ServerError) Format(state fmt.State, verb rune) {
 
 func ServerErrorFromCause(err error) (serverError *ServerError, found bool) {
 	for err != nil {
-		if e, ok := err.(*ServerError); ok {
+		var e *ServerError
+		if errors.As(err, &e) {
 			return e, true
 		}
 		err = errors.Unwrap(err)

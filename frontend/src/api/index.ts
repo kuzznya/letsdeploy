@@ -1,10 +1,10 @@
 import {
   ApiKeyApi,
   Configuration,
-  ManagedServiceApi,
+  ManagedServiceApi, MongodbApi,
   ProjectApi,
   ServiceApi,
-  TokenApi,
+  TokenApi
 } from "@/api/generated";
 import Keycloak from "keycloak-js";
 import { ServiceLogsApi } from "@/api/logs";
@@ -26,6 +26,7 @@ export default {
   ProjectApi: new ProjectApi(config),
   ServiceApi: new ServiceApi(config),
   ManagedServiceApi: new ManagedServiceApi(config),
+  MongoDbApi: new MongodbApi(config),
   TokenApi: new TokenApi(config),
   ServiceLogsApi: new ServiceLogsApi(config),
   ApiKeyApi: new ApiKeyApi(config),

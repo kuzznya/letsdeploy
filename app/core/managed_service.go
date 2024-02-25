@@ -33,6 +33,7 @@ var managedServices = map[openapi.ManagedServiceType]managedServiceParams{
 	openapi.Mongo:    {image: "mongo:6", username: "root", podPort: 27017},
 	openapi.Redis:    {image: "redis:7", username: "", podPort: 6379},
 	openapi.Rabbitmq: {image: "rabbitmq:3-management", username: "guest", podPort: 5672},
+	openapi.Kafka:    {username: "default", podPort: 9092},
 }
 
 type ManagedServices interface {
@@ -425,10 +426,10 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 }
 
 func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service openapi.ManagedService) error {
-	livenessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password $MONGO_INITDB_ROOT_PASSWORD "+
+	livenessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password \"$(cat $MONGO_INITDB_ROOT_PASSWORD_FILE)\" "+
 		"--eval 'db.runCommand({ping: 1})' --quiet",
 		managedServices[service.Type].username)
-	readinessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password $MONGO_INITDB_ROOT_PASSWORD "+
+	readinessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password \"$(cat $MONGO_INITDB_ROOT_PASSWORD_FILE)\" "+
 		"--eval 'db.serverStatus().ok' --quiet | grep -q 1",
 		managedServices[service.Type].username)
 
@@ -436,16 +437,19 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 		WithName(containerName).
 		WithImage(managedServices[service.Type].image).
 		WithPorts(applyConfigsCoreV1.ContainerPort().WithContainerPort(int32(managedServices[service.Type].podPort))).
-		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().WithName("data").WithMountPath("/var/lib/mongodb")).
+		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().
+			WithName("data").
+			WithMountPath("/var/lib/mongodb"),
+			applyConfigsCoreV1.VolumeMount().
+				WithName("mongo-root-auth").
+				WithMountPath("/run/secrets/mongo-root-auth").
+				WithReadOnly(true)).
 		WithEnv(applyConfigsCoreV1.EnvVar().
-			WithName("MONGO_INITDB_ROOT_PASSWORD").
-			WithValueFrom(m.createPasswordEnvVarSource(service)),
+			WithName("MONGO_INITDB_ROOT_PASSWORD_FILE").
+			WithValue("/run/secrets/mongo-root-auth/password"),
 			applyConfigsCoreV1.EnvVar().
 				WithName("MONGO_INITDB_ROOT_USERNAME").
-				WithValue(managedServices[service.Type].username),
-			applyConfigsCoreV1.EnvVar().
-				WithName("MONGO_INITDB_DATABASE").
-				WithValue("mongo")).
+				WithValue(managedServices[service.Type].username)).
 		WithLivenessProbe(applyConfigsCoreV1.Probe().
 			WithExec(applyConfigsCoreV1.ExecAction().
 				WithCommand("/bin/sh", "-c", livenessCmd)).
@@ -463,7 +467,16 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
-		WithSpec(applyConfigsCoreV1.PodSpec().WithContainers(container).WithTerminationGracePeriodSeconds(10))
+		WithSpec(applyConfigsCoreV1.PodSpec().
+			WithContainers(container).
+			WithTerminationGracePeriodSeconds(10).
+			WithVolumes(applyConfigsCoreV1.Volume().
+				WithName("mongo-root-auth").
+				WithSecret(applyConfigsCoreV1.SecretVolumeSource().
+					WithSecretName(service.Name + "-password").
+					WithItems(applyConfigsCoreV1.KeyToPath().
+						WithKey("value").
+						WithPath("password")))))
 
 	pvClaim := applyConfigsCoreV1.PersistentVolumeClaim("data", service.Project).
 		WithSpec(applyConfigsCoreV1.PersistentVolumeClaimSpec().

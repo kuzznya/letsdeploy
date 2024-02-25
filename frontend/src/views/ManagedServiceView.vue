@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, ref } from "vue";
 import api from "@/api";
 import { useDarkMode } from "@/dark-mode";
 import { TypeImage, types } from "@/components/managedServices";
-import { ServiceStatusStatusEnum } from "@/api/generated";
+import { ManagedServiceTypeEnum, ServiceStatusStatusEnum } from "@/api/generated";
+import MongoDbConfig from "@/components/MongoDbConfig.vue";
 
 const darkModeEnabled = useDarkMode().asComputed();
 
@@ -92,6 +93,15 @@ const serviceStatusVariant = computed(() => {
             {{ secret.name }}
           </span>
         </p>
+      </b-col>
+    </b-row>
+
+    <b-row v-if="service.type == ManagedServiceTypeEnum.Mongo && serviceStatus == ServiceStatusStatusEnum.Available">
+      <b-col>
+        <label>Configuration</label>
+        <b-overlay :show="serviceStatus != ServiceStatusStatusEnum.Available">
+          <MongoDbConfig :service="service" class="border rounded p-3" />
+        </b-overlay>
       </b-col>
     </b-row>
   </b-container>
