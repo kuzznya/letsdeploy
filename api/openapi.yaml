@@ -936,7 +936,6 @@ components:
             - mongo
             - rabbitmq
             - redis
-            - kafka
       required:
         - id
         - project
