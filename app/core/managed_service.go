@@ -33,7 +33,6 @@ var managedServices = map[openapi.ManagedServiceType]managedServiceParams{
 	openapi.Mongo:    {image: "mongo:6", username: "root", podPort: 27017},
 	openapi.Redis:    {image: "redis:7", username: "", podPort: 6379},
 	openapi.Rabbitmq: {image: "rabbitmq:3-management", username: "guest", podPort: 5672},
-	openapi.Kafka:    {username: "default", podPort: 9092},
 }
 
 type ManagedServices interface {
