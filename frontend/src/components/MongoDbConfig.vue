@@ -332,7 +332,7 @@ loadUsers();
 
                   <label>Role: </label>
                   <b-form-select
-                    v-model="newUserRole.role"
+                    v-model="newRoleForExistingUser.role"
                     :options="Object.values(MongoDbRoleRoleEnum)"
                     class="d-inline w-auto"
                     size="sm"
