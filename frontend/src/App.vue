@@ -32,7 +32,7 @@ const username = computed(() =>
 
 <template>
   <header>
-    <b-navbar dark="true" variant="dark" data-bs-theme="dark">
+    <b-navbar dark="true" variant="black" data-bs-theme="dark">
       <b-navbar-brand style="cursor: pointer" @click="$router.push('/')">
         <img src="@/assets/logo.svg" alt="Letsdeploy logo" width="30" />
         Letsdeploy
