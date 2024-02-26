@@ -436,7 +436,7 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 		WithPorts(applyConfigsCoreV1.ContainerPort().WithContainerPort(int32(managedServices[service.Type].podPort))).
 		WithVolumeMounts(applyConfigsCoreV1.VolumeMount().
 			WithName("data").
-			WithMountPath("/var/lib/mongodb"),
+			WithMountPath("/data/db"),
 			applyConfigsCoreV1.VolumeMount().
 				WithName("mongo-root-auth").
 				WithMountPath("/run/secrets/mongo-root-auth").
