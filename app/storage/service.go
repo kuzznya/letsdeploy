@@ -16,6 +16,7 @@ type ServiceEntity struct {
 	Port            int            `db:"port"`
 	PublicApiPrefix sql.NullString `db:"public_api_prefix"`
 	EnvVars         EnvVars        `db:"env_vars"`
+	Replicas        int            `db:"replicas"`
 }
 
 type EnvVarEntity struct {
@@ -52,10 +53,10 @@ type serviceRepositoryImpl struct {
 func (r serviceRepositoryImpl) CreateNew(service ServiceEntity) (int, error) {
 	var id int
 	err := r.db.Get(&id,
-		`INSERT INTO service (project_id, name, image, port, public_api_prefix, env_vars) 
-		VALUES ($1, $2, $3, $4, $5, $6) 
+		`INSERT INTO service (project_id, name, image, port, public_api_prefix, env_vars, replicas) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7) 
 		RETURNING id`,
-		service.ProjectId, service.Name, service.Image, service.Port, service.PublicApiPrefix, &service.EnvVars)
+		service.ProjectId, service.Name, service.Image, service.Port, service.PublicApiPrefix, &service.EnvVars, &service.Replicas)
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot save new service")
 	}
@@ -83,8 +84,11 @@ func (r serviceRepositoryImpl) FindByID(id int) (*ServiceEntity, error) {
 }
 
 func (r serviceRepositoryImpl) Update(service ServiceEntity) error {
-	_, err := r.db.Exec("UPDATE service SET name = $1, image = $2, port = $3, public_api_prefix = $4, env_vars = $5 WHERE id = $6",
-		service.Name, service.Image, service.Port, service.PublicApiPrefix, &service.EnvVars, service.Id)
+	_, err := r.db.Exec(`UPDATE service 
+			SET name = $1, image = $2, port = $3, public_api_prefix = $4, env_vars = $5, replicas = $6
+			WHERE id = $7`,
+		service.Name, service.Image, service.Port, service.PublicApiPrefix, &service.EnvVars, service.Replicas,
+		service.Id)
 	if err != nil {
 		return errors.Wrap(err, "failed to update service")
 	}

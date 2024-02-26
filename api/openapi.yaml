@@ -908,6 +908,10 @@ components:
         publicApiPrefix:
           type: string
           pattern: ^(\/[A-Za-z0-9-_.]*)+$
+        replicas:
+          type: integer
+          minimum: 0
+          maximum: 10
       required:
         - id
         - project
@@ -915,6 +919,7 @@ components:
         - image
         - port
         - envVars
+        - replicas
 
     ServiceStatus:
       type: object

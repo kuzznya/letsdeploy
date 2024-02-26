@@ -141,6 +141,7 @@ async function createService() {
           ? { name: e.name, value: e.value }
           : { name: e.name, secret: e.secret }
       ),
+      replicas: 1,
     });
     await router.push({ name: "project", params: { id: props.project } });
   } catch (e) {

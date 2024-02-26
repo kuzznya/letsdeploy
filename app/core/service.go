@@ -81,6 +81,7 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 			Project:         entity.ProjectId,
 			PublicApiPrefix: fromNullString(entity.PublicApiPrefix),
 			EnvVars:         envVars,
+			Replicas:        entity.Replicas,
 		}
 	}
 	return services, nil
@@ -108,6 +109,7 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 		Port:            service.Port,
 		PublicApiPrefix: toNullString(service.PublicApiPrefix),
 		EnvVars:         envVars,
+		Replicas:        service.Replicas,
 	}
 	err := s.storage.ExecTx(ctx, func(store *storage.Storage) error {
 		id, err := store.ServiceRepository().CreateNew(record)
@@ -154,6 +156,7 @@ func (s servicesImpl) GetService(id int, auth middleware.Authentication) (*opena
 		Project:         entity.ProjectId,
 		EnvVars:         envVars,
 		PublicApiPrefix: fromNullString(entity.PublicApiPrefix),
+		Replicas:        entity.Replicas,
 	}, nil
 }
 
@@ -187,6 +190,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		Port:            service.Port,
 		PublicApiPrefix: toNullString(service.PublicApiPrefix),
 		EnvVars:         envVars,
+		Replicas:        service.Replicas,
 	}
 	err = s.storage.ExecTx(ctx, func(store *storage.Storage) error {
 		err := store.ServiceRepository().Update(updated)
@@ -218,6 +222,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		Project:         updated.ProjectId,
 		EnvVars:         service.EnvVars,
 		PublicApiPrefix: fromNullString(updated.PublicApiPrefix),
+		Replicas:        updated.Replicas,
 	}
 	log.Infof("Updated service %s in project %s", service.Name, service.Project)
 	return &result, nil
@@ -408,7 +413,8 @@ func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openap
 		WithSpec(applyConfigsAppsV1.DeploymentSpec().
 			WithSelector(applyConfigsMetaV1.LabelSelector().
 				WithMatchLabels(map[string]string{"app": service.Name})).
-			WithTemplate(podTemplate))
+			WithTemplate(podTemplate).
+			WithReplicas(int32(service.Replicas)))
 
 	_, err := s.clientset.AppsV1().Deployments(service.Project).
 		Apply(ctx, deployment, metav1.ApplyOptions{FieldManager: "letsdeploy"})
