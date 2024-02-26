@@ -285,13 +285,7 @@ paths:
         content:
           application/json:
             schema:
-              allOf:
-                - $ref: '#/components/schemas/Secret'
-                - properties:
-                    value:
-                      type: string
-                  required:
-                    - value
+              $ref: '#/components/schemas/SecretValue'
       responses:
         200:
           description: Created project secret
@@ -320,6 +314,26 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/SecretName'
+    get:
+      operationId: GetSecretValue
+      tags:
+        - project
+      summary: Get secret
+      responses:
+        200:
+          description: Secret with value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretValue'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
     delete:
       operationId: DeleteSecret
       tags:
@@ -1016,6 +1030,16 @@ components:
           readOnly: true
       required:
         - name
+
+    SecretValue:
+      allOf:
+        - $ref: '#/components/schemas/Secret'
+        - type: object
+          properties:
+            value:
+              type: string
+          required:
+            - value
 
     ApiKey:
       type: object

@@ -187,17 +187,13 @@ async function projectParticipants(id: string) {
 
             <b-col class="text-end" cols="3">
               <b-button
-                class="mr-2"
+                class="mx-1 mb-1"
                 variant="outline-danger"
                 @click.stop="onDeleteProjectClicked(project.id)"
               >
                 <i class="bi bi-trash"></i>
               </b-button>
             </b-col>
-          </b-row>
-
-          <b-row>
-
           </b-row>
         </b-card>
       </b-col>

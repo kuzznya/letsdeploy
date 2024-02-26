@@ -367,7 +367,7 @@ loadUsers();
 
             <b-col cols="3" class="text-end">
               <b-button
-                class="mr-2"
+                class="mx-1 mb-1"
                 variant="outline-danger"
                 @click.stop="onDeleteUserClicked(user)"
               >

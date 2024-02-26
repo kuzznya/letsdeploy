@@ -88,16 +88,19 @@ func (s Server) GetSecrets(ctx context.Context, request openapi.GetSecretsReques
 }
 
 func (s Server) CreateSecret(ctx context.Context, request openapi.CreateSecretRequestObject) (openapi.CreateSecretResponseObject, error) {
-	secret, err := s.core.Projects.CreateSecret(
-		ctx,
-		request.Id,
-		openapi.Secret{Name: request.Body.Name},
-		request.Body.Value,
-		middleware.GetAuth(ctx))
+	secret, err := s.core.Projects.CreateSecret(ctx, request.Id, *request.Body, middleware.GetAuth(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new secret")
 	}
 	return openapi.CreateSecret200JSONResponse(*secret), nil
+}
+
+func (s Server) GetSecretValue(ctx context.Context, request openapi.GetSecretValueRequestObject) (openapi.GetSecretValueResponseObject, error) {
+	secretValue, err := s.core.Projects.GetSecretValue(request.Id, request.Name, middleware.GetAuth(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return openapi.GetSecretValue200JSONResponse(*secretValue), nil
 }
 
 func (s Server) DeleteSecret(ctx context.Context, request openapi.DeleteSecretRequestObject) (openapi.DeleteSecretResponseObject, error) {

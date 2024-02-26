@@ -167,6 +167,18 @@ async function deleteService() {
   }
 }
 
+async function copySecretValue(secret: string) {
+  try {
+    const secretValue = await api.ProjectApi.getSecretValue(
+      props.id,
+      secret
+    ).then((r) => r.data);
+    await navigator.clipboard.writeText(secretValue.value);
+  } catch (e: Error | any) {
+    error.value = e;
+  }
+}
+
 const deleteSecretDialogEnabled = ref(false);
 const secretToDelete = ref<string | null>(null);
 
@@ -482,7 +494,7 @@ function cancelSecretCreation() {
 
               <b-col cols="3" class="text-end">
                 <b-button
-                  class="mr-2"
+                  class="mx-1 mb-1"
                   variant="outline-danger"
                   @click.stop="onDeleteManagedServiceClicked(managedService)"
                 >
@@ -610,13 +622,18 @@ function cancelSecretCreation() {
                 </b-row>
               </b-col>
 
-              <b-col
-                v-if="secret.managedService == null"
-                cols="3"
-                class="text-end"
-              >
+              <b-col cols="3" class="text-end">
                 <b-button
-                  class="mr-2"
+                  class="mx-1 mb-1"
+                  variant="outline-secondary"
+                  @click.stop="copySecretValue(secret.name)"
+                >
+                  <i class="bi bi-copy" />
+                </b-button>
+
+                <b-button
+                  v-if="secret.managedService == null"
+                  class="mx-1 mb-1"
                   variant="outline-danger"
                   @click.stop="onDeleteSecretClicked(secret.name)"
                 >

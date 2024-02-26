@@ -43,7 +43,8 @@ type Projects interface {
 	JoinProject(ctx context.Context, code string, auth middleware.Authentication) (*openapi.Project, error)
 	RegenerateInviteCode(ctx context.Context, id string, auth middleware.Authentication) (string, error)
 	GetSecrets(projectId string, auth middleware.Authentication) ([]openapi.Secret, error)
-	CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error)
+	CreateSecret(ctx context.Context, projectId string, secretValue openapi.SecretValue, auth middleware.Authentication) (*openapi.Secret, error)
+	GetSecretValue(projectId string, name string, auth middleware.Authentication) (*openapi.SecretValue, error)
 	DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error
 	checkAccess(id string, auth middleware.Authentication) error
 }
@@ -320,21 +321,21 @@ func (p projectsImpl) GetSecrets(projectId string, auth middleware.Authenticatio
 	return secrets, nil
 }
 
-func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret openapi.Secret, value string, auth middleware.Authentication) (*openapi.Secret, error) {
+func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secretValue openapi.SecretValue, auth middleware.Authentication) (*openapi.Secret, error) {
 	if err := p.checkAccess(projectId, auth); err != nil {
 		return nil, err
 	}
-	exists, err := p.storage.SecretRepository().ExistsByProjectIdAndName(projectId, secret.Name)
+	exists, err := p.storage.SecretRepository().ExistsByProjectIdAndName(projectId, secretValue.Name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if secret already exists")
 	}
 	if exists {
-		return nil, apperrors.BadRequest(fmt.Sprintf("Secret %s already exists in the project", secret.Name))
+		return nil, apperrors.BadRequest(fmt.Sprintf("Secret %s already exists in the project", secretValue.Name))
 	}
 	entity := storage.SecretEntity{
 		ProjectId: projectId,
-		Name:      secret.Name,
-		Value:     value,
+		Name:      secretValue.Name,
+		Value:     secretValue.Value,
 	}
 	err = p.storage.ExecTx(ctx, func(s *storage.Storage) error {
 		err := s.SecretRepository().CreateNew(entity)
@@ -342,8 +343,8 @@ func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret
 			return err
 		}
 
-		config := applyConfigsV1.Secret(strings.ReplaceAll(strings.ToLower(secret.Name), "_", "-"), projectId).
-			WithStringData(map[string]string{secretKey: value})
+		config := applyConfigsV1.Secret(strings.ReplaceAll(strings.ToLower(secretValue.Name), "_", "-"), projectId).
+			WithStringData(map[string]string{secretKey: secretValue.Value})
 		_, err = p.clientset.CoreV1().Secrets(projectId).Apply(ctx, config, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 		if err != nil {
 			return err
@@ -353,8 +354,24 @@ func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secret
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new secret")
 	}
-	log.Infof("Created secret %s in project %s", secret.Name, projectId)
+	log.Infof("Created secret %s in project %s", secretValue.Name, projectId)
+	secret := openapi.Secret{Name: secretValue.Name}
 	return &secret, nil
+}
+
+func (p projectsImpl) GetSecretValue(projectId string, name string, auth middleware.Authentication) (*openapi.SecretValue, error) {
+	if err := p.checkAccess(projectId, auth); err != nil {
+		return nil, err
+	}
+	secret, err := p.storage.SecretRepository().FindByProjectIdAndName(projectId, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to retrieve secret")
+	}
+	return &openapi.SecretValue{
+		Name:             secret.Name,
+		Value:            secret.Value,
+		ManagedServiceId: secret.ManagedServiceId,
+	}, nil
 }
 
 func (p projectsImpl) DeleteSecret(ctx context.Context, projectId string, name string, auth middleware.Authentication) error {
