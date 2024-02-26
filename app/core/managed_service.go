@@ -425,9 +425,7 @@ func (m managedServicesImpl) createMySqlDeployment(ctx context.Context, service 
 }
 
 func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service openapi.ManagedService) error {
-	livenessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password \"$(cat $MONGO_INITDB_ROOT_PASSWORD_FILE)\" "+
-		"--eval 'db.runCommand({ping: 1})' --quiet",
-		managedServices[service.Type].username)
+	livenessCmd := "mongosh --port 27017 --eval 'db.runCommand({ping: 1})' --quiet"
 	readinessCmd := fmt.Sprintf("mongosh --port 27017 --username %s --password \"$(cat $MONGO_INITDB_ROOT_PASSWORD_FILE)\" "+
 		"--eval 'db.serverStatus().ok' --quiet | grep -q 1",
 		managedServices[service.Type].username)
@@ -453,15 +451,15 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 			WithExec(applyConfigsCoreV1.ExecAction().
 				WithCommand("/bin/sh", "-c", livenessCmd)).
 			WithInitialDelaySeconds(20).
-			WithPeriodSeconds(20).
-			WithTimeoutSeconds(5).
+			WithPeriodSeconds(30).
+			WithTimeoutSeconds(10).
 			WithFailureThreshold(3)).
 		WithReadinessProbe(applyConfigsCoreV1.Probe().
 			WithExec(applyConfigsCoreV1.ExecAction().
 				WithCommand("/bin/sh", "-c", readinessCmd)).
 			WithInitialDelaySeconds(30).
-			WithPeriodSeconds(20).
-			WithTimeoutSeconds(5).
+			WithPeriodSeconds(40).
+			WithTimeoutSeconds(10).
 			WithFailureThreshold(3))
 
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
