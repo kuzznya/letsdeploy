@@ -25,7 +25,9 @@ async function loadService() {
     .catch((e) => (error.value = e));
 }
 
-loadService();
+const loading = ref(true);
+
+loadService().then(() => (loading.value = false));
 
 const replicas = ref(1);
 
@@ -191,6 +193,10 @@ function copy<T>(value: T): T {
     <ServiceLogsView :service="service" v-if="$route.name == 'serviceLogs'" />
 
     <error-modal v-model="error" />
+  </b-container>
+
+  <b-container v-else-if="!service && loading" class="text-center mt-5">
+    <b-spinner />
   </b-container>
 
   <b-container v-else>
