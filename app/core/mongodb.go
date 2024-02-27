@@ -252,7 +252,7 @@ func (m mongoDbMgmtImpl) getMongoDbService(ctx context.Context, serviceId int, a
 func (m mongoDbMgmtImpl) getMongoDbClient(ctx context.Context, service openapi.ManagedService) (*mongo.Client, error) {
 	mongoHost := fmt.Sprintf("%s.%s.svc.cluster.local:%d",
 		service.Name, service.Project, managedServices[openapi.Mongo].podPort)
-	secret, err := m.storage.SecretRepository().FindByProjectIdAndName(service.Project, service.Name+"-password")
+	secret, err := m.storage.SecretRepository().FindByProjectIdAndName(service.Project, getManagedServiceSecretName(service.Name))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get root password for MongoDB")
 	}

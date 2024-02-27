@@ -473,7 +473,7 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		log.Debugf("TLS enabled, adding Ingress TLS config")
 		tls = append(tls, applyConfigsNetworkingV1.IngressTLS().
 			WithHosts(service.Project+".letsdeploy.space").
-			WithSecretName(service.Project+"-tls"),
+			WithSecretName(getTlsSecretName(service.Project)),
 		)
 	}
 	ingress := applyConfigsNetworkingV1.Ingress(service.Name+"-ingress", service.Project).

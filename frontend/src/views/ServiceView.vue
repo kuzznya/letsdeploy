@@ -68,9 +68,16 @@ async function updateService(change: (s: Service) => void) {
   // @ts-ignore
   s.id = undefined;
   change(s);
-  service.value = await api.ServiceApi.updateService(props.id, s).then(
-    (r) => r.data
-  );
+  try {
+    service.value = await api.ServiceApi.updateService(props.id, s).then(
+      (r) => r.data
+    );
+  } catch (e: Error | any) {
+    error.value = e;
+    await loadService();
+    return;
+  }
+
   replicas.value = service.value?.replicas ?? 0;
   loadServiceStatus();
 }

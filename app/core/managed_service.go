@@ -265,7 +265,8 @@ func (m managedServicesImpl) createK8sService(ctx context.Context, service opena
 }
 
 func (m managedServicesImpl) createPasswordSecret(ctx context.Context, store *storage.Storage, service openapi.ManagedService) error {
-	exists, err := store.SecretRepository().ExistsByProjectIdAndName(service.Project, service.Name+"-password")
+	secretName := getManagedServiceSecretName(service.Name)
+	exists, err := store.SecretRepository().ExistsByProjectIdAndName(service.Project, secretName)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if password secret already exists")
 	}
@@ -281,13 +282,13 @@ func (m managedServicesImpl) createPasswordSecret(ctx context.Context, store *st
 	}
 	password := string(b)
 
-	secret := applyConfigsCoreV1.Secret(service.Name+"-password", service.Project).
+	secret := applyConfigsCoreV1.Secret(secretName, service.Project).
 		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
 		WithStringData(map[string]string{secretKey: password})
 
 	secretEntity := storage.SecretEntity{
 		ProjectId:        service.Project,
-		Name:             service.Name + "-password",
+		Name:             secretName,
 		Value:            password,
 		ManagedServiceId: service.Id,
 	}
@@ -313,7 +314,7 @@ func (m managedServicesImpl) createPasswordSecret(ctx context.Context, store *st
 func (m managedServicesImpl) createPasswordEnvVarSource(service openapi.ManagedService) *applyConfigsCoreV1.EnvVarSourceApplyConfiguration {
 	return applyConfigsCoreV1.EnvVarSource().
 		WithSecretKeyRef(applyConfigsCoreV1.SecretKeySelector().
-			WithName(service.Name + "-password").
+			WithName(getManagedServiceSecretName(service.Name)).
 			WithKey(secretKey))
 }
 
@@ -470,7 +471,7 @@ func (m managedServicesImpl) createMongoDeployment(ctx context.Context, service 
 			WithVolumes(applyConfigsCoreV1.Volume().
 				WithName("mongo-root-auth").
 				WithSecret(applyConfigsCoreV1.SecretVolumeSource().
-					WithSecretName(service.Name + "-password").
+					WithSecretName(getManagedServiceSecretName(service.Name)).
 					WithItems(applyConfigsCoreV1.KeyToPath().
 						WithKey("value").
 						WithPath("password")))))
@@ -641,7 +642,7 @@ func (m managedServicesImpl) deleteK8sService(ctx context.Context, namespace str
 }
 
 func (m managedServicesImpl) deletePasswordSecret(ctx context.Context, namespace string, name string) error {
-	err := m.clientset.CoreV1().Secrets(namespace).Delete(ctx, name+"-password", metav1.DeleteOptions{})
+	err := m.clientset.CoreV1().Secrets(namespace).Delete(ctx, getManagedServiceSecretName(name), metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to delete secret for managed service")
 	}
@@ -694,4 +695,8 @@ func (m managedServicesImpl) syncKubernetes(ctx context.Context, projectId strin
 	}
 
 	return nil
+}
+
+func getManagedServiceSecretName(serviceName string) string {
+	return managedSecretPrefix + serviceName + ".password"
 }

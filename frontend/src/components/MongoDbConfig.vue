@@ -8,6 +8,7 @@ import {
 import { onUnmounted, ref } from "vue";
 import api from "@/api";
 import { useDarkMode } from "@/dark-mode";
+import ErrorModal from "@/components/ErrorModal.vue";
 
 const darkModeEnabled = useDarkMode().asComputed();
 
@@ -402,6 +403,8 @@ loadUsers();
         >?
       </p>
     </b-modal>
+
+    <error-modal v-model="error" />
   </b-container>
 </template>
 

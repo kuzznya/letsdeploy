@@ -27,6 +27,7 @@ import (
 
 const namespaceLabel = "letsdeploy.space/project-namespace"
 const secretKey = "value"
+const managedSecretPrefix = "letsdeploy."
 
 type Projects interface {
 	projectSynchronizable
@@ -322,6 +323,10 @@ func (p projectsImpl) GetSecrets(projectId string, auth middleware.Authenticatio
 }
 
 func (p projectsImpl) CreateSecret(ctx context.Context, projectId string, secretValue openapi.SecretValue, auth middleware.Authentication) (*openapi.Secret, error) {
+	if strings.HasPrefix(secretValue.Name, managedSecretPrefix) {
+		return nil, apperrors.BadRequest("User cannot create secrets prefixed with '" + managedSecretPrefix + "'")
+	}
+
 	if err := p.checkAccess(projectId, auth); err != nil {
 		return nil, err
 	}
@@ -428,10 +433,10 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 			Kind:       certManagerV1.CertificateKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: project + "-tls",
+			Name: getTlsSecretName(project),
 		},
 		Spec: certManagerV1.CertificateSpec{
-			SecretName: project + "-tls",
+			SecretName: getTlsSecretName(project),
 			DNSNames:   []string{project + ".letsdeploy.space"},
 			IssuerRef: v1.ObjectReference{
 				Kind: "ClusterIssuer",
@@ -455,7 +460,7 @@ func (p projectsImpl) createTlsCertificate(ctx context.Context, project string) 
 }
 
 func (p projectsImpl) deleteTlsCertificate(ctx context.Context, project string) error {
-	err := p.cmClient.CertmanagerV1().Certificates(project).Delete(ctx, project+"-tls", metav1.DeleteOptions{})
+	err := p.cmClient.CertmanagerV1().Certificates(project).Delete(ctx, managedSecretPrefix+project+".tls", metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrapf(err, "failed to delete TLS certificate for project %s", project)
 	}
@@ -537,4 +542,8 @@ func (p projectsImpl) removeExcessNamespaces(ctx context.Context, checkedProject
 			log.Debugf("Namespace %s without corresponding project was deleted", namespace.Name)
 		}
 	}
+}
+
+func getTlsSecretName(project string) string {
+	return managedSecretPrefix + project + ".tls"
 }
