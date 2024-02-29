@@ -140,7 +140,7 @@ if (router.currentRoute.value.name == "project") {
       </b-nav-item>
     </b-nav>
 
-    <router-view class="p-0" />
+    <router-view class="p-0" :key="$route.fullPath" />
   </b-container>
 </template>
 
