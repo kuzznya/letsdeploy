@@ -34,6 +34,9 @@ func sync(core *Core) chrono.Task {
 					log.WithError(err).Errorf("Project %s sync failed, skipping", project.Id)
 					continue
 				}
+				if err := core.Registries.syncKubernetes(ctx, project.Id); err != nil {
+					log.WithError(err).Errorf("Project %s registries sync failed", project.Id)
+				}
 				if err := core.Services.syncKubernetes(ctx, project.Id); err != nil {
 					log.WithError(err).Errorf("Project %s services sync failed", project.Id)
 				}
