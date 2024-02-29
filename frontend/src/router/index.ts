@@ -10,6 +10,8 @@ import ManagedServiceView from "@/views/ManagedServiceView.vue";
 import ServiceConfigView from "@/views/ServiceConfigView.vue";
 import ServiceLogsView from "@/views/ServiceLogsView.vue";
 import ApiKeysView from "@/views/ApiKeysView.vue";
+import ProjectResourcesView from "@/views/ProjectResourcesView.vue";
+import ProjectSettingsView from "@/views/ProjectSettingsView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -35,6 +37,20 @@ const router = createRouter({
       name: "project",
       component: ProjectView,
       props: (r) => ({ id: r.params.id }),
+      children: [
+        {
+          path: "resources",
+          name: "projectResources",
+          component: ProjectResourcesView,
+          props: (r) => ({ id: r.params.id }),
+        },
+        {
+          path: "settings",
+          name: "projectSettings",
+          component: ProjectSettingsView,
+          props: (r) => ({ id: r.params.id }),
+        },
+      ],
       meta: {
         secured: true,
       },

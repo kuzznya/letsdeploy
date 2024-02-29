@@ -53,6 +53,7 @@ type Projects interface {
 type projectsImpl struct {
 	services        Services
 	managedServices ManagedServices
+	registries      ContainerRegistries
 	storage         *storage.Storage
 	clientset       *kubernetes.Clientset
 	cmClient        *certManagerClientset.Clientset
@@ -73,6 +74,7 @@ func InitProjects(
 	core.OnProvided(func(core Core) {
 		p.services = core.Services
 		p.managedServices = core.ManagedServices
+		p.registries = core.Registries
 	})
 	return p
 }
@@ -125,6 +127,11 @@ func (p projectsImpl) CreateProject(ctx context.Context, project openapi.Project
 			if err != nil {
 				return err
 			}
+		}
+
+		err = p.registries.syncKubernetes(ctx, project.Id)
+		if err != nil {
+			return err
 		}
 
 		return nil

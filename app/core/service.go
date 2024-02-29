@@ -407,7 +407,9 @@ func (s servicesImpl) applyServiceDeployment(ctx context.Context, service openap
 	}
 	podTemplate := applyConfigsCoreV1.PodTemplateSpec().
 		WithLabels(map[string]string{"app": service.Name}).
-		WithSpec(applyConfigsCoreV1.PodSpec().WithContainers(container))
+		WithSpec(applyConfigsCoreV1.PodSpec().
+			WithContainers(container).
+			WithImagePullSecrets(applyConfigsCoreV1.LocalObjectReference().WithName(regcredSecretName)))
 	deployment := applyConfigsAppsV1.Deployment(service.Name, service.Project).
 		WithLabels(map[string]string{"letsdeploy.space/managed": "true"}).
 		WithSpec(applyConfigsAppsV1.DeploymentSpec().

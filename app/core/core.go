@@ -16,6 +16,7 @@ type Core struct {
 	Services        Services
 	ManagedServices ManagedServices
 	MongoDbMgmt     MongoDbMgmt
+	Registries      ContainerRegistries
 	Tokens          Tokens
 	ApiKeys         ApiKeys
 }
@@ -37,6 +38,7 @@ func New(
 	services := InitServices(projects, storage, clientset, cfg)
 	managedServices := InitManagedServices(projects, storage, clientset)
 	mongoDbMgmt := InitMongoDbMgmt(managedServices, storage, clientset)
+	registries := InitContainerRegistries(projects, storage, clientset)
 	tokens := InitTokens(rdb)
 	apiKeys := InitApiKeys(storage)
 
@@ -45,6 +47,7 @@ func New(
 		Services:        services,
 		ManagedServices: managedServices,
 		MongoDbMgmt:     mongoDbMgmt,
+		Registries:      registries,
 		Tokens:          tokens,
 		ApiKeys:         apiKeys,
 	}

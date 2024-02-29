@@ -351,6 +351,90 @@ paths:
         500:
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/projects/{id}/registries:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ProjectId'
+    get:
+      operationId: GetProjectContainerRegistries
+      tags:
+        - registry
+      summary: Get project container registries
+      responses:
+        200:
+          description: List of secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContainerRegistry'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      operationId: AddContainerRegistry
+      tags:
+        - registry
+      summary: Add container registry
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContainerRegistry'
+      responses:
+        200:
+          description: List of secrets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerRegistry'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/projects/{id}/registries/{registry_id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ProjectId'
+      - name: registry_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      operationId: DeleteContainerRegistry
+      tags:
+        - registry
+      summary: Delete container registry
+      responses:
+        200:
+          description: Success
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/services:
     post:
       operationId: CreateService
@@ -1045,6 +1129,28 @@ components:
               type: string
           required:
             - value
+
+    ContainerRegistry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          minLength: 1
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+      required:
+        - id
+        - url
+        - username
+        - password
 
     ApiKey:
       type: object

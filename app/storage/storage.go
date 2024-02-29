@@ -39,6 +39,10 @@ func (s *Storage) SecretRepository() SecretRepository {
 	return &secretRepositoryImpl{db: s.db}
 }
 
+func (s *Storage) ContainerRegistryRepository() ContainerRegistryRepository {
+	return &containerRegistryRepositoryImpl{db: s.db}
+}
+
 func (s *Storage) ApiKeyRepository() ApiKeyRepository {
 	return &apiKeyRepositoryImpl{db: s.db}
 }
