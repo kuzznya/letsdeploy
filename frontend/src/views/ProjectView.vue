@@ -133,8 +133,8 @@ if (router.currentRoute.value.name == "project") {
         Resources
       </b-nav-item>
       <b-nav-item
-        :active="$route == 'projectSettings'"
         :to="{ name: 'projectSettings', params: { id: props.id } }"
+        :active="$route.name == 'projectSettings'"
       >
         Settings
       </b-nav-item>
