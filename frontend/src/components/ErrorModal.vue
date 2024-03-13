@@ -41,7 +41,7 @@ const errorMessage = computed(() => {
     ok-only="true"
     title="Error"
     @update:model-value="
-      (value) => {
+      (value: boolean) => {
         if (!value) emit('update:modelValue', null);
       }
     "

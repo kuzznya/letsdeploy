@@ -11,9 +11,10 @@ import { keycloakKey } from "@/keycloak";
 import DarkMode from "@/dark-mode";
 import api from "@/api";
 
-import { createBootstrap } from "bootstrap-vue-next";
+// @ts-ignore
+import BootstrapVue3 from "bootstrap-vue-3";
 import "bootstrap/dist/css/bootstrap.css";
-import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
+import "bootstrap-vue-3/dist/bootstrap-vue-3.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 import "./assets/main.css";
@@ -43,7 +44,7 @@ const kcOptions: VueKeycloakOptions = {
 };
 
 app.use(createPinia());
-app.use(createBootstrap({ components: true, directives: true }));
+app.use(BootstrapVue3);
 app.use(DarkMode);
 app.use(VueKeyCloak, kcOptions);
 

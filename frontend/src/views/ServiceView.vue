@@ -13,10 +13,6 @@ const props = defineProps<{
 
 const router = useRouter();
 
-if (router.currentRoute.value.name == "service") {
-  await router.replace({ name: "serviceConfig", params: { id: props.id } });
-}
-
 const error = ref<Error | string | null>(null);
 
 const service = ref<Service>();
@@ -123,7 +119,7 @@ function copy<T>(value: T): T {
     <b-row class="my-3">
       <b-col>
         <label>Replicas:</label>
-        <b-form-spinbutton
+        <b-form-spin-button
           v-model="replicas"
           min="0"
           max="10"
