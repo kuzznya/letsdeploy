@@ -17,7 +17,7 @@ type ProjectInfo = {
 const projects = await api.ProjectApi.getProjects()
   .then((r) => r.data)
   .then(async (p) => {
-    const result = [];
+    const result: { id: string; participants: string }[] = [];
     for (const project of p) {
       result.push({
         id: project.id,
@@ -43,13 +43,13 @@ const nameEntered = computed(
   () =>
     newProjectName.value.length >= 4 &&
     !newProjectName.value.startsWith("-") &&
-    !newProjectName.value.endsWith("-")
+    !newProjectName.value.endsWith("-"),
 );
 
 async function createProject() {
   try {
     await api.ProjectApi.createProject({ id: newProjectName.value }).then(
-      (r) => r.data
+      (r) => r.data,
     );
     newProjectName.value = "";
     newProjectInputEnabled.value = false;
@@ -57,7 +57,7 @@ async function createProject() {
     projects.value = await api.ProjectApi.getProjects()
       .then((r) => r.data)
       .then(async (p) => {
-        const result = [];
+        const result: { id: string; participants: string }[] = [];
         for (const project of p) {
           result.push({
             id: project.id,
@@ -92,7 +92,7 @@ async function deleteProject() {
     projects.value = await api.ProjectApi.getProjects()
       .then((r) => r.data)
       .then(async (p) => {
-        const result = [];
+        const result: { id: string; participants: string }[] = [];
         for (const project of p) {
           result.push({
             id: project.id,
@@ -111,7 +111,7 @@ async function projectParticipants(id: string) {
     .then((participants) =>
       participants.length <= 5
         ? participants.join(", ")
-        : participants.slice(0, 5).concat(["..."]).join(", ")
+        : participants.slice(0, 5).concat(["..."]).join(", "),
     );
 }
 </script>
@@ -208,8 +208,8 @@ async function projectParticipants(id: string) {
     <b-modal
       v-model="deleteProjectDialogEnabled"
       :hide-header-close="true"
-      body-text-variant="black"
-      header-text-variant="black"
+      body-text-variant="body"
+      header-text-variant="body"
       title="Delete service"
       @ok="deleteProject"
     >

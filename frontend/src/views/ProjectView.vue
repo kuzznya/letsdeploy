@@ -30,7 +30,9 @@ function participantList() {
 
 const inviteLink = computed(
   () =>
-    window.location.origin + "/projects/invitations/" + project.value.inviteCode
+    window.location.origin +
+    "/projects/invitations/" +
+    project.value.inviteCode,
 );
 
 async function copyInviteLink() {
@@ -39,7 +41,7 @@ async function copyInviteLink() {
 
 async function regenerateInviteCode() {
   const response = await api.ProjectApi.regenerateInviteCode(props.id).then(
-    (r) => r.data
+    (r) => r.data,
   );
   project.value.inviteCode = response.inviteCode;
 }

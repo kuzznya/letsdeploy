@@ -25,12 +25,12 @@ const project = await api.ProjectApi.getProject(props.id)
 
 const managedServicesMap = project.value.managedServices.reduce(
   (prev, cur) => Object.assign(prev, { [cur.id]: cur }),
-  {}
+  {},
 ) as { [id: number]: ManagedService };
 
 const serviceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>({});
 const managedServiceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>(
-  {}
+  {},
 );
 
 loadServiceStatuses();
@@ -70,7 +70,7 @@ function loadServiceStatuses() {
     api.ManagedServiceApi.getManagedServiceStatus(service.id)
       .then((r) => r.data)
       .then(
-        (status) => (managedServiceStatuses.value[status.id] = status.status)
+        (status) => (managedServiceStatuses.value[status.id] = status.status),
       );
   }
 }
@@ -92,8 +92,8 @@ async function loadSecrets() {
           : {
               name: s.name,
               managedService: null,
-            }
-      )
+            },
+      ),
     );
 }
 
@@ -132,7 +132,7 @@ async function deleteService() {
   } finally {
     serviceToDelete.value = null;
     project.value = await api.ProjectApi.getProject(props.id).then(
-      (r) => r.data
+      (r) => r.data,
     );
     secrets.value = await loadSecrets();
   }
@@ -142,7 +142,7 @@ async function copySecretValue(secret: string) {
   try {
     const secretValue = await api.ProjectApi.getSecretValue(
       props.id,
-      secret
+      secret,
     ).then((r) => r.data);
     await navigator.clipboard.writeText(secretValue.value);
   } catch (e: Error | any) {
@@ -313,8 +313,8 @@ function cancelSecretCreation() {
       <b-modal
         v-model="deleteServiceDialogEnabled"
         :hide-header-close="true"
-        body-text-variant="black"
-        header-text-variant="black"
+        body-text-variant="body"
+        header-text-variant="body"
         title="Delete service"
         @ok="deleteService"
       >
@@ -380,7 +380,7 @@ function cancelSecretCreation() {
                       <b-badge
                         :variant="
                           getServiceStatusVariant(
-                            getManagedServiceStatus(managedService.id)
+                            getManagedServiceStatus(managedService.id),
                           )
                         "
                       >
@@ -410,7 +410,7 @@ function cancelSecretCreation() {
           <p v-if="project.managedServices.length === 0">
             No managed services yet.
           </p>
-          <b-card bg-variant="transparent" border-variant="info">
+          <b-card border-variant="info" class="bg-transparent">
             <p class="mb-0">
               <i class="bi bi-info-circle" />
               Managed services help you to speed up your development by taking
@@ -547,7 +547,7 @@ function cancelSecretCreation() {
       <b-row class="mt-3">
         <b-col>
           <p v-if="secrets.length === 0">No managed services yet.</p>
-          <b-card bg-variant="transparent" border-variant="info">
+          <b-card border-variant="info" class="bg-transparent">
             <p class="mb-0">
               <i class="bi bi-info-circle" />
               Secrets help you to keep the sensitive data secure. To use it in a
@@ -561,8 +561,8 @@ function cancelSecretCreation() {
       <b-modal
         v-model="deleteSecretDialogEnabled"
         :hide-header-close="true"
-        body-text-variant="black"
-        header-text-variant="black"
+        body-text-variant="body"
+        header-text-variant="body"
         title="Delete secret"
         @ok="deleteSecret"
       >

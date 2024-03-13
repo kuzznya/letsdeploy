@@ -47,7 +47,7 @@ async function loadSecrets() {
 
 const secretsRefresher = setInterval(
   () => loadSecrets().catch((e) => console.log("Failed to load secrets", e)),
-  10000
+  10000,
 );
 onUnmounted(() => clearInterval(secretsRefresher));
 
@@ -139,7 +139,7 @@ async function createService() {
       envVars: envVars.value.map((e) =>
         e.type == "value"
           ? { name: e.name, value: e.value }
-          : { name: e.name, secret: e.secret }
+          : { name: e.name, secret: e.secret },
       ),
       replicas: 1,
     });
@@ -235,10 +235,10 @@ async function createService() {
 
             <span class="font-monospace">{{ element.name + " = " }}</span>
             <span v-if="element.type === 'value'" class="font-monospace">{{
-                element.value
-              }}</span>
+              element.value
+            }}</span>
             <span v-else-if="element.type === 'secret'" class="font-monospace"
-            >secret: {{ element.secret }}</span
+              >secret: {{ element.secret }}</span
             >
           </b-col>
         </b-row>
@@ -247,9 +247,8 @@ async function createService() {
 
     <b-card
       v-if="envVars.length === 0"
-      bg-variant="transparent"
       border-variant="secondary"
-      class="mb-2"
+      class="mb-2 bg-transparent"
     >
       <p class="mb-0">No variables set</p>
     </b-card>

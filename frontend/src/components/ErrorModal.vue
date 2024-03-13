@@ -35,7 +35,7 @@ const errorMessage = computed(() => {
 <template>
   <b-modal
     :model-value="modalModelValue"
-    body-text-variant="black"
+    body-text-variant="body"
     header-bg-variant="danger"
     header-text-variant="white"
     ok-only="true"

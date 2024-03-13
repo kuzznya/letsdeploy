@@ -65,7 +65,7 @@ async function loadSecrets() {
 
 const secretsRefresher = setInterval(
   () => loadSecrets().catch((e) => console.log("Failed to load secrets", e)),
-  10000
+  10000,
 );
 onUnmounted(() => clearInterval(secretsRefresher));
 
@@ -175,7 +175,7 @@ async function saveEnvVars() {
   const newVars = envVars.value.map((e) =>
     e.type == "value"
       ? { name: e.name, value: e.value }
-      : { name: e.name, secret: e.secret }
+      : { name: e.name, secret: e.secret },
   );
   try {
     // @ts-ignore
@@ -189,8 +189,9 @@ const areEnvVarsEdited = computed(
   () =>
     props.service.envVars.length != envVars.value.length ||
     props.service.envVars.findIndex(
-      (value, idx) => !areEnvVarsEqual(envVarToTyped(value), envVars.value[idx])
-    ) != -1
+      (value, idx) =>
+        !areEnvVarsEqual(envVarToTyped(value), envVars.value[idx]),
+    ) != -1,
 );
 
 function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
@@ -431,9 +432,8 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
 
     <b-card
       v-if="envVars.length === 0"
-      bg-variant="transparent"
       border-variant="secondary"
-      class="mb-2"
+      class="mb-2 bg-transparent"
     >
       <p class="mb-0">No variables set</p>
     </b-card>

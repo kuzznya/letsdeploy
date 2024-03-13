@@ -10,7 +10,7 @@ export class ServiceLogsApi {
   connectToLogStream(service: number, token: string) {
     const url = this.baseURL?.substring("http".length);
     return new WebSocket(
-      `ws${url}/api/v1/services/${service}/logs?token=${token}`
+      `ws${url}/api/v1/services/${service}/logs?token=${token}`,
     );
   }
 }

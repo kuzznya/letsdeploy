@@ -120,6 +120,7 @@ function hideWidthCacheDiv() {
   const widthCache = renderer?._widthCache;
   const container = widthCache?._container as HTMLElement | null;
   if (container) {
+    // @ts-ignore
     container.style.contentVisibility = "hidden";
   }
 }
@@ -131,7 +132,7 @@ function reconnect() {
 await load().catch(() =>
   setTimeout(function () {
     load();
-  }, 1000)
+  }, 1000),
 );
 </script>
 

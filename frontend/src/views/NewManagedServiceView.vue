@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const name = ref("");
 const selectedType = ref<ManagedServiceTypeEnum>(
-  ManagedServiceTypeEnum.Postgres
+  ManagedServiceTypeEnum.Postgres,
 );
 const error = ref<Error | string | null>(null);
 
@@ -65,13 +65,11 @@ async function createManagedService() {
 
     <b-row class="mt-3 text-center">
       <b-col>
-        <!--suppress TypeScriptValidateTypes -->
         <b-card
           v-for="type in Object.values(types)"
           :key="type.type"
           :bg-variant="selectedType === type.type ? 'info' : 'light'"
-          body-class="p-2 border-info border-5"
-          body-text-variant="black"
+          body-class="p-2 border-info border-5 text-black"
           class="d-inline-block m-2 text-center"
           style="width: 8rem"
           @click="selectedType = type.type"

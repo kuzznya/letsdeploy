@@ -26,14 +26,14 @@ if (
 const username = computed(() =>
   keycloak.authenticated && keycloak.tokenParsed
     ? keycloak.tokenParsed["preferred_username"]
-    : "User"
+    : "User",
 );
 </script>
 
 <template>
   <header>
-    <b-navbar dark="true" variant="black" data-bs-theme="dark">
-      <b-navbar-brand style="cursor: pointer" @click="$router.push('/')">
+    <b-navbar dark="true" variant="dark" class="bg-black" data-bs-theme="dark">
+      <b-navbar-brand style="cursor: pointer" :to="{ name: 'home' }">
         <img src="@/assets/logo.svg" alt="Letsdeploy logo" width="30" />
         Letsdeploy
       </b-navbar-brand>

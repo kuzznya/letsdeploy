@@ -39,7 +39,7 @@ const newUserRole = ref<MongoDbRole>({
 
 function deleteNewUserRole(role: MongoDbRole) {
   newUserRoles.value = newUserRoles.value.filter(
-    (r) => !(r.db == role.db && r.role == role.role)
+    (r) => !(r.db == role.db && r.role == role.role),
   );
 }
 
@@ -118,7 +118,7 @@ async function addRoleToExistingUser(user: MongoDbUser, role: MongoDbRole) {
 
 async function deleteRole(user: MongoDbUser, role: MongoDbRole) {
   user.roles = user.roles.filter(
-    (r) => !(r.db == role.db && r.role == role.role)
+    (r) => !(r.db == role.db && r.role == role.role),
   );
 
   await api.MongoDbApi.updateMongoDbUser(props.service.id, user)
@@ -215,9 +215,8 @@ loadUsers();
 
           <b-card
             v-if="newUserRoles.length === 0"
-            bg-variant="transparent"
             border-variant="secondary"
-            class="mb-2"
+            class="mb-2 bg-transparent"
           >
             <p class="mb-0">No roles set</p>
           </b-card>
@@ -343,7 +342,7 @@ loadUsers();
                     :disabled="
                       newRoleForExistingUser.db.length == 0 ||
                       !Object.values(MongoDbRoleRoleEnum).includes(
-                        newRoleForExistingUser.role
+                        newRoleForExistingUser.role,
                       )
                     "
                     class="d-inline ms-2"
@@ -382,9 +381,8 @@ loadUsers();
 
     <b-card
       v-if="users == null || users.length == 0"
-      bg-variant="transparent"
       border-variant="secondary"
-      class="mb-2"
+      class="mb-2 bg-transparent"
     >
       <p class="mb-0">No users configured</p>
     </b-card>
@@ -392,8 +390,8 @@ loadUsers();
     <b-modal
       v-model="deleteUserDialogEnabled"
       :hide-header-close="true"
-      body-text-variant="black"
-      header-text-variant="black"
+      body-text-variant="body"
+      header-text-variant="body"
       title="Delete service"
       @ok="deleteUser"
     >

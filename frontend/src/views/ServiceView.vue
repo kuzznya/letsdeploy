@@ -13,6 +13,10 @@ const props = defineProps<{
 
 const router = useRouter();
 
+if (router.currentRoute.value.name == "service") {
+  await router.replace({ name: "serviceConfig", params: { id: props.id } });
+}
+
 const error = ref<Error | string | null>(null);
 
 const service = ref<Service>();
@@ -70,7 +74,7 @@ async function updateService(change: (s: Service) => void) {
   change(s);
   try {
     service.value = await api.ServiceApi.updateService(props.id, s).then(
-      (r) => r.data
+      (r) => r.data,
     );
   } catch (e: Error | any) {
     error.value = e;
