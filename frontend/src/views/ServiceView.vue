@@ -119,7 +119,7 @@ function copy<T>(value: T): T {
     <b-row class="my-3">
       <b-col>
         <label>Replicas:</label>
-        <b-form-spin-button
+        <b-form-spinbutton
           v-model="replicas"
           min="0"
           max="10"
