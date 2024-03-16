@@ -3,6 +3,8 @@ import api from "@/api";
 import { computed, ref } from "vue";
 import { useDarkMode } from "@/dark-mode";
 import { useRouter } from "vue-router";
+import { ProjectInfo } from "@/api/generated";
+import ErrorModal from "@/components/ErrorModal.vue";
 
 const router = useRouter();
 const darkModeEnabled = useDarkMode().asComputed();
@@ -11,9 +13,20 @@ const props = defineProps<{
   id: string;
 }>();
 
-const project = await api.ProjectApi.getProject(props.id)
+const error = ref<Error | string | null>(null);
+
+const project = ref<ProjectInfo>({
+  id: props.id,
+  inviteCode: "",
+  participants: [],
+  services: [],
+  managedServices: [],
+});
+
+api.ProjectApi.getProject(props.id)
   .then((r) => r.data)
-  .then((data) => ref(data));
+  .then((p) => (project.value = p))
+  .catch((e) => (error.value = e));
 
 const inviteLinkVisible = ref(false);
 
@@ -143,7 +156,7 @@ if (router.currentRoute.value.name == "project") {
     </b-nav>
 
     <router-view class="p-0" :key="$route.fullPath" />
+
+    <error-modal v-model="error" />
   </b-container>
 </template>
-
-<style scoped></style>

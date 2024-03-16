@@ -5,6 +5,7 @@ import api from "@/api";
 import ErrorModal from "@/components/ErrorModal.vue";
 import {
   ManagedService,
+  ProjectInfo,
   Service,
   ServiceStatusStatusEnum,
 } from "@/api/generated";
@@ -19,9 +20,22 @@ const props = defineProps<{
   id: string;
 }>();
 
-const project = await api.ProjectApi.getProject(props.id)
+const project = ref<ProjectInfo>({
+  id: props.id,
+  inviteCode: "",
+  participants: [],
+  services: [],
+  managedServices: [],
+});
+
+const loading = ref(true);
+
+api.ProjectApi.getProject(props.id)
   .then((r) => r.data)
-  .then((data) => ref(data));
+  .then((p) => (project.value = p))
+  .then(() => loadServiceStatuses())
+  .catch((e) => (error.value = e))
+  .then(() => (loading.value = false));
 
 const managedServicesMap = project.value.managedServices.reduce(
   (prev, cur) => Object.assign(prev, { [cur.id]: cur }),
@@ -32,8 +46,6 @@ const serviceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>({});
 const managedServiceStatuses = ref<{ [id: number]: ServiceStatusStatusEnum }>(
   {},
 );
-
-loadServiceStatuses();
 
 const serviceStatusRefresher = setInterval(() => loadServiceStatuses(), 10_000);
 
@@ -56,7 +68,7 @@ function getServiceStatusVariant(status: ServiceStatusStatusEnum) {
     case ServiceStatusStatusEnum.Unhealthy:
       return "danger";
     default:
-      return "warning";
+      return "transparent";
   }
 }
 
@@ -75,7 +87,9 @@ function loadServiceStatuses() {
   }
 }
 
-const secrets = await loadSecrets().then((s) => ref(s));
+const secrets = ref<{ name: string; managedService: ManagedService | null }[]>(
+  [],
+);
 
 const error = ref<Error | string | null>(null);
 
@@ -94,8 +108,11 @@ async function loadSecrets() {
               managedService: null,
             },
       ),
-    );
+    )
+    .then((s) => (secrets.value = s));
 }
+
+loadSecrets().catch((e) => (error.value = e));
 
 type TypedService =
   | { service: Service; type: "Service" }
@@ -203,6 +220,8 @@ function cancelSecretCreation() {
 
 <template>
   <b-container>
+    <b-overlay :show="loading" no-wrap />
+
     <div>
       <h3>Services</h3>
 
@@ -514,7 +533,7 @@ function cancelSecretCreation() {
                         }"
                         class="font-monospace link-underline-dark"
                       >
-                        {{ secret.managedService.name }}
+                        {{ secret.managedService?.name }}
                       </b-link>
                     </p>
                   </b-col>

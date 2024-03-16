@@ -129,7 +129,7 @@ function reconnect() {
   ws?.close();
 }
 
-await load().catch(() =>
+load().catch(() =>
   setTimeout(function () {
     load();
   }, 1000),

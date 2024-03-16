@@ -3,18 +3,24 @@ import api from "@/api";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useDarkMode } from "@/dark-mode";
+import ErrorModal from "@/components/ErrorModal.vue";
 
 const router = useRouter();
 
 const darkMode = useDarkMode();
 const darkModeEnabled = darkMode.asComputed();
 
+const error = ref<Error | string | null>(null);
+
 type ProjectInfo = {
   id: string;
   participants: string;
 };
 
-const projects = await api.ProjectApi.getProjects()
+const projects = ref<ProjectInfo[]>([]);
+const loading = ref(true);
+
+api.ProjectApi.getProjects()
   .then((r) => r.data)
   .then(async (p) => {
     const result: { id: string; participants: string }[] = [];
@@ -26,7 +32,9 @@ const projects = await api.ProjectApi.getProjects()
     }
     return result;
   })
-  .then((data) => ref(data));
+  .then((data) => (projects.value = data))
+  .catch((e) => (error.value = e))
+  .then(() => (loading.value = false));
 
 const newProjectInputEnabled = ref(false);
 
@@ -199,7 +207,13 @@ async function projectParticipants(id: string) {
       </b-col>
     </b-row>
 
-    <b-row v-if="projects.length === 0">
+    <b-row v-if="projects.length === 0 && loading" class="mt-5">
+      <b-col class="text-center">
+        <b-spinner />
+      </b-col>
+    </b-row>
+
+    <b-row v-else-if="projects.length === 0 && !loading">
       <b-col>
         <p>Seems like you have no projects yet</p>
       </b-col>
@@ -219,5 +233,7 @@ async function projectParticipants(id: string) {
         >?
       </p>
     </b-modal>
+
+    <error-modal v-model="error" />
   </b-container>
 </template>

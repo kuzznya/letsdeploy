@@ -65,9 +65,7 @@ const username = computed(() =>
     </b-navbar>
   </header>
 
-  <Suspense>
-    <b-container :data-bs-theme="darkModeEnabled ? 'dark' : 'light'">
-      <router-view class="mt-3" />
-    </b-container>
-  </Suspense>
+  <b-container :data-bs-theme="darkModeEnabled ? 'dark' : 'light'">
+    <router-view class="mt-3" />
+  </b-container>
 </template>
