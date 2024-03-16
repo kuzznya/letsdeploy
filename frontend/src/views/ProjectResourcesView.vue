@@ -11,6 +11,7 @@ import {
 } from "@/api/generated";
 import { TypeImage, types } from "@/components/managedServices";
 import { useDarkMode } from "@/dark-mode";
+import { BaseColorVariant } from "bootstrap-vue-next";
 
 const router = useRouter();
 
@@ -68,7 +69,7 @@ function getServiceStatusVariant(status: ServiceStatusStatusEnum) {
     case ServiceStatusStatusEnum.Unhealthy:
       return "danger";
     default:
-      return "transparent";
+      return "transparent" as keyof BaseColorVariant;
   }
 }
 
