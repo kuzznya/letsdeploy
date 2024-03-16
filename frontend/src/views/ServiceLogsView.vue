@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Service } from "@/api/generated";
 import api from "@/api";
-import { onBeforeUnmount, ref } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 
@@ -10,6 +10,8 @@ const props = defineProps<{
 }>();
 
 const loaded = ref(false);
+
+const replica = ref<number | null>(null);
 
 let ws: WebSocket | null = null;
 
@@ -36,11 +38,19 @@ onBeforeUnmount(() => {
 async function load() {
   loaded.value = false;
 
+  if (replica.value != null && replica.value >= props.service.replicas) {
+    replica.value = null;
+  }
+
   const token = await api.TokenApi.createTempToken()
     .then((r) => r.data)
     .then((data) => data.token);
 
-  ws = api.ServiceLogsApi.connectToLogStream(props.service.id, token);
+  ws = api.ServiceLogsApi.connectToLogStream(
+    props.service.id,
+    token,
+    replica.value != null ? replica.value : undefined,
+  );
 
   ws.onopen = () => {
     createTerm();
@@ -129,11 +139,20 @@ function reconnect() {
   ws?.close();
 }
 
+function replicaSelectOptions() {
+  return [...Array(props.service.replicas).keys()].map((idx) => ({
+    value: idx,
+    text: `Replica ${idx}`,
+  }));
+}
+
 load().catch(() =>
   setTimeout(function () {
     load();
   }, 1000),
 );
+
+watch(replica, () => reconnect());
 </script>
 
 <template>
@@ -149,9 +168,20 @@ load().catch(() =>
       <div id="terminal" />
     </b-overlay>
 
-    <b-button @click="reconnect" class="mt-1" variant="outline-danger">
-      Reconnect
-    </b-button>
+    <b-row class="my-2">
+      <b-col style="max-width: 10rem">
+        <b-form-select
+          v-model="replica"
+          :options="replicaSelectOptions()"
+          size="sm"
+        />
+      </b-col>
+      <b-col>
+        <b-button @click="reconnect" variant="outline-danger" size="sm">
+          Reconnect
+        </b-button>
+      </b-col>
+    </b-row>
   </b-container>
 </template>
 

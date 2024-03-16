@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
@@ -21,6 +22,7 @@ import (
 	applyConfigsMetaV1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	applyConfigsNetworkingV1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"k8s.io/client-go/kubernetes"
+	"slices"
 	"strings"
 	"time"
 )
@@ -36,7 +38,7 @@ type Services interface {
 	DeleteService(ctx context.Context, id int, auth middleware.Authentication) error
 	GetServiceStatus(ctx context.Context, id int, auth middleware.Authentication) (*openapi.ServiceStatus, error)
 	RestartService(ctx context.Context, id int, auth middleware.Authentication) error
-	StreamServiceLogs(ctx context.Context, serviceId int, auth middleware.Authentication) (io.Reader, error)
+	StreamServiceLogs(ctx context.Context, serviceId int, replica int, auth middleware.Authentication) (io.Reader, error)
 }
 
 type servicesImpl struct {
@@ -332,7 +334,7 @@ func (s servicesImpl) RestartService(ctx context.Context, id int, auth middlewar
 	return nil
 }
 
-func (s servicesImpl) StreamServiceLogs(ctx context.Context, serviceId int, auth middleware.Authentication) (io.Reader, error) {
+func (s servicesImpl) StreamServiceLogs(ctx context.Context, serviceId int, replica int, auth middleware.Authentication) (io.Reader, error) {
 	service, err := s.GetService(serviceId, auth)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find service by id")
@@ -346,14 +348,25 @@ func (s servicesImpl) StreamServiceLogs(ctx context.Context, serviceId int, auth
 		return nil, apperrors.InternalServerError("failed to find a pod for service " + service.Name)
 	}
 
-	newestPod := list.Items[0]
-	for _, pod := range list.Items {
-		if pod.CreationTimestamp.After(newestPod.CreationTimestamp.Time) {
-			newestPod = pod
+	pods := list.Items
+	latestGen := pods[0].Generation
+	for _, pod := range pods {
+		if latestGen < pod.Generation {
+			latestGen = pod.Generation
 		}
 	}
 
-	req := s.clientset.CoreV1().Pods(service.Project).GetLogs(newestPod.Name, &v1.PodLogOptions{Follow: true})
+	pods = filter(pods, func(pod v1.Pod) bool { return pod.Generation == latestGen })
+
+	if len(pods) <= replica {
+		return nil, apperrors.NotFound(fmt.Sprintf("Replica %d not found for service %d", replica, serviceId))
+	}
+
+	slices.SortFunc(pods, func(a, b v1.Pod) int {
+		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
+	})
+
+	req := s.clientset.CoreV1().Pods(service.Project).GetLogs(pods[replica].Name, &v1.PodLogOptions{Follow: true})
 	logs, err := req.Stream(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open logs stream")

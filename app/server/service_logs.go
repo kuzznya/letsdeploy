@@ -47,6 +47,15 @@ func ServiceLogStreamEndpoint(r *gin.Engine, c *core.Core, rdb *redis.Client) {
 			_ = ctx.AbortWithError(http.StatusBadRequest, apperrors.BadRequest("Failed to parse service id"))
 		}
 
+		replicaStr := ctx.Query("replica")
+		replica := 0
+		if replicaStr != "" {
+			replica, err = strconv.Atoi(replicaStr)
+			if err != nil {
+				_ = ctx.AbortWithError(http.StatusBadRequest, apperrors.BadRequest("Failed to parse replica index"))
+			}
+		}
+
 		conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 		if err != nil {
 			log.WithError(err).Errorln("Failed to upgrade to WebSocket")
@@ -56,7 +65,7 @@ func ServiceLogStreamEndpoint(r *gin.Engine, c *core.Core, rdb *redis.Client) {
 
 		logCtx, cancel := context.WithCancel(ctx)
 
-		logs, err := c.Services.StreamServiceLogs(logCtx, id, middleware.Authentication{Username: username})
+		logs, err := c.Services.StreamServiceLogs(logCtx, id, replica, middleware.Authentication{Username: username})
 		if err != nil {
 			_ = ctx.AbortWithError(http.StatusInternalServerError, err)
 		}
