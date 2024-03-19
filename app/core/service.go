@@ -2,20 +2,26 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
+	"github.com/kuzznya/letsdeploy/app/infrastructure/k8s"
 	"github.com/kuzznya/letsdeploy/app/middleware"
 	"github.com/kuzznya/letsdeploy/app/storage"
 	"github.com/kuzznya/letsdeploy/internal/openapi"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/traefik/traefik/v2/pkg/config/dynamic"
+	traefikClientset "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/generated/clientset/versioned/typed/traefikio/v1alpha1"
+	traefikCrd "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	"io"
 	v1 "k8s.io/api/core/v1"
 	networkingV1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	applyConfigsAppsV1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applyConfigsCoreV1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -42,10 +48,11 @@ type Services interface {
 }
 
 type servicesImpl struct {
-	projects  Projects
-	storage   *storage.Storage
-	clientset *kubernetes.Clientset
-	cfg       *viper.Viper
+	projects      Projects
+	storage       *storage.Storage
+	clientset     *kubernetes.Clientset
+	traefikClient traefikClientset.TraefikV1alpha1Interface
+	cfg           *viper.Viper
 }
 
 var _ Services = (*servicesImpl)(nil)
@@ -56,7 +63,14 @@ func InitServices(
 	clientset *kubernetes.Clientset,
 	cfg *viper.Viper,
 ) Services {
-	s := servicesImpl{projects: projects, storage: storage, clientset: clientset, cfg: cfg}
+	traefikClient := k8s.SetupTraefikClient(cfg)
+	s := servicesImpl{
+		projects:      projects,
+		storage:       storage,
+		clientset:     clientset,
+		traefikClient: traefikClient,
+		cfg:           cfg,
+	}
 	return &s
 }
 
@@ -104,12 +118,18 @@ func (s servicesImpl) CreateService(ctx context.Context, service openapi.Service
 		return varEntity
 	})
 
+	stripApiPrefix := false
+	if service.PublicApiPrefix != nil && service.StripApiPrefix != nil && *service.StripApiPrefix {
+		stripApiPrefix = true
+	}
+
 	record := storage.ServiceEntity{
 		ProjectId:       service.Project,
 		Name:            service.Name,
 		Image:           service.Image,
 		Port:            service.Port,
 		PublicApiPrefix: toNullString(service.PublicApiPrefix),
+		StripApiPrefix:  stripApiPrefix,
 		EnvVars:         envVars,
 		Replicas:        service.Replicas,
 	}
@@ -158,6 +178,7 @@ func (s servicesImpl) GetService(id int, auth middleware.Authentication) (*opena
 		Project:         entity.ProjectId,
 		EnvVars:         envVars,
 		PublicApiPrefix: fromNullString(entity.PublicApiPrefix),
+		StripApiPrefix:  &entity.StripApiPrefix,
 		Replicas:        entity.Replicas,
 	}, nil
 }
@@ -184,6 +205,11 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		return varEntity
 	})
 
+	stripApiPrefix := false
+	if service.PublicApiPrefix != nil && service.StripApiPrefix != nil && *service.StripApiPrefix {
+		stripApiPrefix = true
+	}
+
 	updated := storage.ServiceEntity{
 		Id:              *service.Id,
 		ProjectId:       retrieved.Project,
@@ -191,6 +217,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		Image:           service.Image,
 		Port:            service.Port,
 		PublicApiPrefix: toNullString(service.PublicApiPrefix),
+		StripApiPrefix:  stripApiPrefix,
 		EnvVars:         envVars,
 		Replicas:        service.Replicas,
 	}
@@ -224,6 +251,7 @@ func (s servicesImpl) UpdateService(ctx context.Context, service openapi.Service
 		Project:         updated.ProjectId,
 		EnvVars:         service.EnvVars,
 		PublicApiPrefix: fromNullString(updated.PublicApiPrefix),
+		StripApiPrefix:  &updated.StripApiPrefix,
 		Replicas:        updated.Replicas,
 	}
 	log.Infof("Updated service %s in project %s", service.Name, service.Project)
@@ -470,8 +498,31 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		if err != nil {
 			log.WithError(err).Errorf("Failed to delete ingress for service %s of project %s", service.Name, service.Project)
 		}
+		err = s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
+		}
+
+		err = s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
+		}
+
 		return nil
+	} else if service.StripApiPrefix == nil || *service.StripApiPrefix {
+		err := s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
+		}
 	}
+
+	if service.StripApiPrefix != nil && *service.StripApiPrefix {
+		err := s.createStripPrefixMiddleware(ctx, service)
+		if err != nil {
+			return err
+		}
+	}
+
 	backend := applyConfigsNetworkingV1.IngressBackend().
 		WithService(applyConfigsNetworkingV1.IngressServiceBackend().
 			WithName(service.Name).
@@ -497,14 +548,79 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 			"letsdeploy.space/service-type": "service",
 		}).
 		WithSpec(applyConfigsNetworkingV1.IngressSpec().WithRules(rule).WithTLS(tls...))
+	if ingress.Annotations == nil {
+		ingress.Annotations = make(map[string]string)
+	}
 	if s.cfg.GetBool("tls.enabled") {
-		ingress.Labels["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-		ingress.Labels["traefik.ingress.kubernetes.io/router.tls"] = "true"
+		ingress.Annotations["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+		ingress.Annotations["traefik.ingress.kubernetes.io/router.tls"] = "true"
+	}
+	if service.StripApiPrefix != nil && *service.StripApiPrefix {
+		log.Debugln("Adding traefik middleware annotation")
+		middlewareRef := fmt.Sprintf("%s-%s-strip-prefix", service.Project, service.Name)
+		ingress.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middlewareRef
 	}
 	_, err := s.clientset.NetworkingV1().Ingresses(service.Project).Apply(ctx, ingress, metav1.ApplyOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return errors.Wrap(err, "failed to create Ingress for service "+service.Name)
 	}
+	return nil
+}
+
+func (s servicesImpl) createStripPrefixMiddleware(ctx context.Context, service openapi.Service) error {
+	if service.PublicApiPrefix == nil || service.StripApiPrefix == nil || !*service.StripApiPrefix {
+		err := s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
+		}
+		return nil
+	}
+
+	middlewareName := service.Name + "-strip-prefix"
+	stripPrefixMiddleware := traefikCrd.Middleware{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: traefikCrd.SchemeGroupVersion.Identifier(),
+			Kind:       "Middleware",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      middlewareName,
+			Namespace: service.Project,
+			Labels: map[string]string{
+				"letsdeploy.space/managed": "true",
+			},
+		},
+		Spec: traefikCrd.MiddlewareSpec{
+			StripPrefix: &dynamic.StripPrefix{
+				Prefixes: []string{*service.PublicApiPrefix},
+			},
+		},
+	}
+	body, err := json.Marshal(&stripPrefixMiddleware)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
+	}
+	patchOpts := metav1.ApplyOptions{FieldManager: "letsdeploy"}.ToPatchOptions()
+
+	_, err = s.traefikClient.Middlewares(service.Project).Create(ctx, &stripPrefixMiddleware, metav1.CreateOptions{FieldManager: "letsdeploy"})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
+	}
+
+	_, err = s.traefikClient.Middlewares(service.Project).Patch(ctx, middlewareName, types.ApplyPatchType, body, patchOpts)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
+	}
+	log.Debugf("Created/updated strip prefix middleware %s in namespace %s", middlewareName, service.Project)
+	return nil
+}
+
+func (s servicesImpl) deleteStripPrefixMiddleware(ctx context.Context, project string, service string) error {
+	middlewareName := service + "-strip-prefix"
+	err := s.traefikClient.Middlewares(project).Delete(ctx, middlewareName, metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrapf(err, "failed to delete strip prefix middleware for service %s", service)
+	}
+	log.Debugf("Deleted strip prefix middleware %s in namespace %s", middlewareName, project)
 	return nil
 }
 
@@ -603,6 +719,21 @@ func (s servicesImpl) syncKubernetes(ctx context.Context, projectId string) erro
 			err := s.deleteIngress(ctx, projectId, name)
 			if err != nil {
 				log.WithError(err).Errorf("Failed to delete ingress %s, skipping\n", ingress.Name)
+			}
+		}
+	}
+
+	middlewares, err := s.traefikClient.Middlewares(projectId).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to get middlewares")
+	}
+
+	for _, mw := range middlewares.Items {
+		name, _ := strings.CutSuffix(mw.Name, "-strip-prefix")
+		if !contains(servicesMap, name) {
+			err := s.deleteStripPrefixMiddleware(ctx, mw.Namespace, name)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to delete strip prefix middleware %s, skipping", mw.Name)
 			}
 		}
 	}

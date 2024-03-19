@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { EnvVar, Service } from "@/api/generated";
 import ErrorModal from "@/components/ErrorModal.vue";
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import api from "@/api";
 import { useDarkMode } from "@/dark-mode";
 import draggable from "vuedraggable";
@@ -27,6 +27,10 @@ const portEditEnabled = ref(false);
 
 const publicApiPrefix = ref(props.service.publicApiPrefix || "");
 const publicApiPrefixEditEnabled = ref(false);
+
+const stripApiPrefix = ref(props.service.stripApiPrefix || false);
+
+watch(stripApiPrefix, () => updateStripApiPrefix());
 
 type EnvVarType = "value" | "secret";
 
@@ -119,6 +123,16 @@ async function updateApiPrefix() {
   publicApiPrefixEditEnabled.value = false;
   try {
     await updateService((s) => (s.publicApiPrefix = newApiPrefix));
+  } catch (e) {
+    error.value = e instanceof Error ? e : (e as string);
+  }
+}
+
+async function updateStripApiPrefix() {
+  const newValue =
+    publicApiPrefix.value.length > 0 && stripApiPrefix.value ? true : undefined;
+  try {
+    await updateService((s) => (s.stripApiPrefix = newValue));
   } catch (e) {
     error.value = e instanceof Error ? e : (e as string);
   }
@@ -366,6 +380,11 @@ function areEnvVarsEqual(envVar1: TypedEnvVar, envVar2: TypedEnvVar) {
         </span>
       </b-col>
     </b-row>
+
+    <div v-if="publicApiPrefix.length > 0">
+      <label class="mt-3 me-1" for="strip-api-prefix">Strip API prefix:</label>
+      <b-form-checkbox id="strip-api-prefix" v-model="stripApiPrefix" inline />
+    </div>
 
     <label class="mt-3 mb-3 me-3 fs-5">Environment variables:</label>
     <b-button

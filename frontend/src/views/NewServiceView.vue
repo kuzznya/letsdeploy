@@ -22,6 +22,7 @@ const name = ref("");
 const image = ref("");
 const port = ref(8080);
 const publicApiPrefix = ref("");
+const stripApiPrefix = ref(false);
 const envVars = ref<TypedEnvVar[]>([]);
 const newEnvVar = ref<TypedEnvVar>({
   name: "",
@@ -135,6 +136,8 @@ async function createService() {
       port: Number.parseInt(port.value as unknown as string),
       publicApiPrefix:
         publicApiPrefix.value.length > 0 ? publicApiPrefix.value : undefined,
+      stripApiPrefix:
+        publicApiPrefix.value.length > 0 ? stripApiPrefix.value : undefined,
       // @ts-ignore
       envVars: envVars.value.map((e) =>
         e.type == "value"
@@ -200,6 +203,11 @@ async function createService() {
       :formatter="formatApiPrefix"
     />
     <p v-if="publicApiPrefix.length === 0">No public access</p>
+
+    <div v-if="publicApiPrefix.length > 0">
+      <label class="mt-3 me-1" for="strip-api-prefix">Strip API prefix:</label>
+      <b-form-checkbox id="strip-api-prefix" v-model="stripApiPrefix" inline />
+    </div>
 
     <label class="mt-3">Environment variables:</label>
     <draggable

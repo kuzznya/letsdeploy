@@ -992,6 +992,8 @@ components:
         publicApiPrefix:
           type: string
           pattern: ^(\/[A-Za-z0-9-_.]*)+$
+        stripApiPrefix:
+          type: boolean
         replicas:
           type: integer
           minimum: 0
