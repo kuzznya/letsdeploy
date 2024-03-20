@@ -105,7 +105,7 @@ func (r projectRepositoryImpl) GetParticipants(id string) ([]string, error) {
 		return nil, errors.Errorf("project with id %s does not exist", id)
 	}
 	participants := []string{}
-	err = r.db.Select(&participants, "SELECT username FROM project_participant WHERE project_id = $1", id)
+	err = r.db.Select(&participants, "SELECT username FROM project_participant WHERE project_id = $1 ORDER BY username", id)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get project participants")
 	}
