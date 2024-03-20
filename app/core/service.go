@@ -551,7 +551,7 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 	}
 	if service.StripApiPrefix != nil && *service.StripApiPrefix {
 		log.Debugln("Adding traefik middleware annotation")
-		middlewareRef := fmt.Sprintf("%s-%s-strip-prefix", service.Project, service.Name)
+		middlewareRef := fmt.Sprintf("%s-%s-strip-prefix@kubernetescrd", service.Project, service.Name)
 		ingress.Annotations["traefik.ingress.kubernetes.io/router.middlewares"] = middlewareRef
 	}
 	_, err := s.clientset.NetworkingV1().Ingresses(service.Project).Apply(ctx, ingress, metav1.ApplyOptions{FieldManager: "letsdeploy"})
