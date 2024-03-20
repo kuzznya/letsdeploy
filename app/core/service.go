@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/kuzznya/letsdeploy/app/apperrors"
 	"github.com/kuzznya/letsdeploy/app/infrastructure/k8s"
@@ -21,7 +20,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	applyConfigsAppsV1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applyConfigsCoreV1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -594,22 +592,34 @@ func (s servicesImpl) createStripPrefixMiddleware(ctx context.Context, service o
 			},
 		},
 	}
-	body, err := json.Marshal(&stripPrefixMiddleware)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
-	}
-	patchOpts := metav1.ApplyOptions{FieldManager: "letsdeploy"}.ToPatchOptions()
 
-	_, err = s.traefikClient.Middlewares(service.Project).Create(ctx, &stripPrefixMiddleware, metav1.CreateOptions{FieldManager: "letsdeploy"})
+	_, err := s.traefikClient.Middlewares(service.Project).Create(ctx, &stripPrefixMiddleware, metav1.CreateOptions{FieldManager: "letsdeploy"})
+	if err == nil {
+		log.Debugf("Created strip prefix middleware %s in namespace %s", middlewareName, service.Project)
+		return nil
+	}
 	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
+		return errors.Wrapf(err, "failed to create strip prefix middleware for service %s", service.Name)
 	}
 
-	_, err = s.traefikClient.Middlewares(service.Project).Patch(ctx, middlewareName, types.ApplyPatchType, body, patchOpts)
+	mw, err := s.traefikClient.Middlewares(service.Project).Get(ctx, middlewareName, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "failed to update strip prefix middleware for service %s", service.Name)
+	}
+
+	if mw.Spec.StripPrefix != nil &&
+		len(mw.Spec.StripPrefix.Prefixes) == 1 &&
+		slices.Contains(mw.Spec.StripPrefix.Prefixes, *service.PublicApiPrefix) {
+		log.Debugf("Strip prefix middleware %s in namespace %s is up to date", mw.Name, mw.Namespace)
+		return nil
+	}
+
+	stripPrefixMiddleware.ResourceVersion = mw.ResourceVersion
+	_, err = s.traefikClient.Middlewares(service.Project).Update(ctx, &stripPrefixMiddleware, metav1.UpdateOptions{FieldManager: "letsdeploy"})
 	if err != nil {
 		return errors.Wrapf(err, "failed to create/update strip prefix middleware for service %s", service.Name)
 	}
-	log.Debugf("Created/updated strip prefix middleware %s in namespace %s", middlewareName, service.Project)
+	log.Debugf("Updated strip prefix middleware %s in namespace %s", middlewareName, service.Project)
 	return nil
 }
 
