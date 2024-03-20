@@ -502,14 +502,8 @@ func (s servicesImpl) createIngress(ctx context.Context, service openapi.Service
 		if err != nil {
 			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
 		}
-
-		err = s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
-		if err != nil {
-			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
-		}
-
 		return nil
-	} else if service.StripApiPrefix == nil || *service.StripApiPrefix {
+	} else if service.StripApiPrefix == nil || !*service.StripApiPrefix {
 		err := s.deleteStripPrefixMiddleware(ctx, service.Project, service.Name)
 		if err != nil {
 			log.WithError(err).Errorf("Failed to delete strip prefix middleware for service %s of project %s", service.Name, service.Project)
