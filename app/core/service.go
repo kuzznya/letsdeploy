@@ -89,6 +89,10 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 			return nil, err
 		}
 		id := entity.Id
+		stripApiPrefix := false
+		if entity.PublicApiPrefix.Valid && entity.StripApiPrefix {
+			stripApiPrefix = true
+		}
 		services[i] = openapi.Service{
 			Id:              &id,
 			Image:           entity.Image,
@@ -96,6 +100,7 @@ func (s servicesImpl) GetProjectServices(project string, auth middleware.Authent
 			Port:            entity.Port,
 			Project:         entity.ProjectId,
 			PublicApiPrefix: fromNullString(entity.PublicApiPrefix),
+			StripApiPrefix:  &stripApiPrefix,
 			EnvVars:         envVars,
 			Replicas:        entity.Replicas,
 		}
